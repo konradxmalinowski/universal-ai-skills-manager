@@ -70,8 +70,10 @@
    Jeden kolor i jego odcienie (cobalt-100 do cobalt-600) plus czerwień.
    Nic innego nie ma barwy. Intensywność rośnie z wagą konsekwencji:
    cobalt-300 to akcja, zaznaczenie i fokus; cobalt-200 to najmocniejszy
-   stopień, sygnał "nadpisze istniejący plik"; czerwień znaczy wyłącznie
-   "tego nie cofniesz". Sukces nie ma koloru.
+   stopień, sygnał "nadpisze istniejący plik"; czerwień znaczy: ta operacja
+   usuwa coś, co istnieje teraz, a przywrócenie wymaga osobnego, świadomego
+   kroku. Operacja bez możliwości zrobienia kopii jest zablokowana, nie
+   czerwona. Sukces nie ma koloru.
    ========================================================================== */
 :root {
   color-scheme: dark;
@@ -88,7 +90,7 @@
   --cobalt-500: #2A3A6E;   /* powierzchnia akcentowa podniesiona */
   --cobalt-600: #1B2A5E;   /* wypełnienie powierzchni akcentowej */
   --accent: var(--cobalt-300);
-  --destructive: #F2705D;  /* wyłącznie: nieodwracalne */
+  --destructive: #F2705D;  /* usunięcie, przywrócenie osobnym krokiem */
   --on-accent: #000000;    /* etykieta na wypełnieniu cobalt-300 */
   --control-border: var(--text-muted); /* granice pól: WCAG 1.4.11 wymaga 3:1, hairline ma mniej */
 
@@ -733,7 +735,7 @@ svg.m { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-widt
     <li>
       <p class="k">Decyzja 3</p>
       <p class="t">Kolor wyłącznie jako informacja</p>
-      <p>Intensywność koloru rośnie z wagą konsekwencji. Czerwień znaczy wyłącznie „tego nie cofniesz”. Sukces nie ma koloru.</p>
+      <p>Intensywność koloru rośnie z wagą konsekwencji. Czerwień znaczy: ta operacja usuwa coś, co istnieje teraz, a przywrócenie wymaga osobnego, świadomego kroku. Sukces nie ma koloru.</p>
       <p class="demo"><a href="#kolor">Zobacz skalę intensywności</a></p>
     </li>
   </ol>
@@ -807,7 +809,7 @@ model: sonnet
 <!-- 3 -->
 <section class="sec" id="kolor" aria-labelledby="kolor-h">
   <p class="sec-n">3. Kolor</p>
-  <h2 id="kolor-h">Jeden kolor niesie wszystko, a czerwień znaczy tylko „tego nie cofniesz”.</h2>
+  <h2 id="kolor-h">Jeden kolor niesie wszystko, a czerwień znaczy: to zniknie, a wrócić może tylko osobny krok.</h2>
   <p class="lead">Czarne tło i neutralne powierzchnie, jeden kobalt w sześciu stopniach i czerwień. Żadnej innej barwy nie ma. Zero gradientów: głębia pochodzi z linii 1 px i z tonu powierzchni, dlatego powierzchnie mają ton, a czysta czerń jest tylko tłem. Tekst nie jest czystą bielą.</p>
 
   <div class="swatches" id="swatches">
@@ -823,13 +825,13 @@ model: sonnet
     <div class="sw" style="--c:var(--cobalt-400)"><div class="chipbox"></div><code>cobalt-400</code><span class="u">wyciszony akcent, obramowania aktywne</span><div class="hx"><span>C #4F68C4</span><span>J #6079DB</span></div></div>
     <div class="sw" style="--c:var(--cobalt-500)"><div class="chipbox"></div><code>cobalt-500</code><span class="u">powierzchnia akcentowa podniesiona</span><div class="hx"><span>C #2A3A6E</span><span>J #C9D5FA</span></div></div>
     <div class="sw" style="--c:var(--cobalt-600)"><div class="chipbox"></div><code>cobalt-600</code><span class="u">wypełnienie powierzchni akcentowej</span><div class="hx"><span>C #1B2A5E</span><span>J #DDE5FF</span></div></div>
-    <div class="sw" style="--c:var(--destructive)"><div class="chipbox"></div><code>destructive</code><span class="u">WYŁĄCZNIE: tego nie cofniesz</span><div class="hx"><span>C #F2705D</span><span>J #B3261E</span></div></div>
+    <div class="sw" style="--c:var(--destructive)"><div class="chipbox"></div><code>destructive</code><span class="u">WYŁĄCZNIE: usuwa to, co istnieje teraz</span><div class="hx"><span>C #F2705D</span><span>J #B3261E</span></div></div>
     <div class="sw" style="--c:var(--on-accent)"><div class="chipbox"></div><code>on-accent</code><span class="u">etykieta na wypełnieniu cobalt-300</span><div class="hx"><span>C #000000</span><span>J #FFFFFF</span></div></div>
   </div>
   <p class="note">C to ciemny (domyślny), J to jasny. W jasnym motywie rampa jest odwrócona rolami, nie numerami: baza akcji jest ciemniejsza, a cobalt-200 (sygnał nadpisania) jest jeszcze ciemniejszy, bo najintensywniejszy stopień musi być tym najbardziej kontrastowym wobec tła w obu motywach.</p>
 
   <h3>Skala intensywności</h3>
-  <p class="lead" style="margin-bottom:var(--s4)"><b style="font-weight:600">Intensywność koloru rośnie z wagą konsekwencji, a czerwień znaczy wyłącznie „tego nie cofniesz”.</b> Sukces nie ma koloru: nie potrzebuje pilności, a każdy kolor wydany na sukces osłabia sygnał zagrożenia.</p>
+  <p class="lead" style="margin-bottom:var(--s4)"><b style="font-weight:600">Intensywność koloru rośnie z wagą konsekwencji, a czerwień znaczy: ta operacja usuwa coś, co istnieje teraz, a przywrócenie wymaga osobnego, świadomego kroku.</b> Sukces nie ma koloru: nie potrzebuje pilności, a każdy kolor wydany na sukces osłabia sygnał zagrożenia.</p>
   <table class="ladder">
     <caption class="vh">Skala intensywności</caption>
     <thead><tr><th>Waga konsekwencji</th><th>Barwa</th><th>Jak wygląda</th></tr></thead>
@@ -837,10 +839,10 @@ model: sonnet
       <tr><th scope="row">Brak konsekwencji: zapisane i potwierdzone</th><td><code>text</code>, bez koloru</td><td><div class="alert alert--success"><span class="a-h">Zapisano</span><p>14 plików w 2 narzędziach. Weryfikacja odczytem zgodna z planem.</p></div></td></tr>
       <tr><th scope="row">Wybór: zaznaczenie, akcja, fokus</th><td><code>cobalt-300</code></td><td><span class="ld-row"><label class="check"><input type="checkbox" checked> <span>Zaznaczony wiersz</span></label><button class="btn btn--primary btn--sm" type="button" data-demo-press>Zapisz 14 zmian</button><a href="#kolor">podkreślenie</a></span></td></tr>
       <tr><th scope="row">Konsekwencja: nadpisze istniejący plik</th><td><code>cobalt-200</code>, słowo „nadpisze”, waga 700</td><td><div class="ex-row ex-row--overwrite"><span class="mark"><svg class="m"><use href="#m-swap"/></svg></span><code>~/.codex/agents/docs-agent.toml</code><span class="ef">Nadpisze niezarządzany</span></div></td></tr>
-      <tr><th scope="row">Nieodwracalne: tego nie cofniesz</th><td><code>destructive</code>, jedyna inna barwa</td><td><div class="ex-row ex-row--destructive"><span class="mark"><svg class="m"><use href="#m-bar"/></svg></span><code>~/.claude/commands/deploy-staging.md</code><span class="ef">Zniknie z dysku</span></div></td></tr>
+      <tr><th scope="row">Usunięcie: przywrócenie wymaga osobnego kroku</th><td><code>destructive</code>, jedyna inna barwa</td><td><div class="ex-row ex-row--destructive"><span class="mark"><svg class="m"><use href="#m-bar"/></svg></span><code>~/.claude/commands/deploy-staging.md</code><span class="ef">Zniknie z dysku</span></div></td></tr>
     </tbody>
   </table>
-  <p class="note">Błąd, po którym aplikacja przywróciła stan, jest neutralny: gruby pasek w kolorze tekstu i słowo „Błąd”. Czerwień dostaje wyłącznie błąd, po którym odtworzenie stanu się nie udało. Poziom zgodności nie używa koloru: pokazują go słowo i cztery segmenty.</p>
+  <p class="note">Błąd, po którym aplikacja przywróciła stan, jest neutralny: gruby pasek w kolorze tekstu i słowo „Błąd”. Czerwień dostaje błąd, po którym aplikacja nie przywróciła stanu i odzyskanie wymaga ręcznego kroku. Operacja, której nie da się zabezpieczyć kopią, nie jest czerwona, tylko zablokowana: aplikacja odmawia i mówi dlaczego (sekcja 6). Poziom zgodności nie używa koloru: pokazują go słowo i cztery segmenty.</p>
 
   <h3>cobalt-200 obok cobalt-300</h3>
   <p class="lead" style="margin-bottom:var(--s4)">Od tego, czy te dwa stopnie da się odróżnić w jednym rejestrze, zależy, czy sygnał nadpisania w ogóle działa. Różnica jest policzona, a poniżej pokazana w realnym układzie.</p>
@@ -1212,13 +1214,19 @@ model: sonnet
       <p class="st-k">Błąd, wycofany</p>
       <p class="st-s">Zapis nie powiódł się, a pliki są takie jak przed nim.</p>
       <div class="ev ev--ink"><b>Błąd weryfikacji</b><span><code>~/.codex/config.toml</code> po zapisie różnił się od planu. Aplikacja przywróciła kopię.</span></div>
-      <p class="st-m">Błąd odwracalny jest neutralny. Czerwień zostaje na wypadek, gdy cofnięcia nie ma.</p>
+      <p class="st-m">Błąd, po którym stan wrócił, jest neutralny. Czerwień zostaje na błąd, po którym stan nie wrócił.</p>
     </div>
     <div class="state">
-      <p class="st-k">Błąd, bez cofnięcia</p>
-      <p class="st-s">Zapis nie powiódł się i nie udało się go wycofać.</p>
-      <div class="ev ev--destructive"><b>Cofnięcie niemożliwe</b><span>Nie zapisano kopii <code>~/.codex/skills/antislop-code/SKILL.md</code>. Przywróć plik ręcznie z kopii w Historii.</span></div>
-      <p class="st-m">Jedyny błąd, który dostaje czerwień.</p>
+      <p class="st-k">Błąd, stan niewycofany</p>
+      <p class="st-s">Zapis nie powiódł się i stan nie wrócił do poprzedniego.</p>
+      <div class="ev ev--destructive"><b>Stan nieprzywrócony</b><span>Aplikacja nie zdołała przywrócić <code>~/.codex/skills/antislop-code/SKILL.md</code> z kopii. Plik, który istniał, nie wrócił sam, więc odtworzenie wymaga ręcznego kroku z Historii.</span></div>
+      <p class="st-m">Czerwień dostaje błąd, po którym przywrócenie wymaga osobnego, świadomego kroku.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Zablokowane, brak kopii</p>
+      <p class="st-s">Zapis nie ruszy tego pliku, bo aplikacja nie potrafi zrobić jego kopii.</p>
+      <div class="ev ev--ink"><b>Zablokowane</b><span><code>~/.codex/skills/antislop-code/SKILL.md</code> leży poza zakresem kopii zapasowej albo aplikacja nie ma do niego uprawnień. Nic nie zostało zmienione.</span></div>
+      <p class="st-m">Aplikacja odmawia i mówi dlaczego, zamiast ostrzegać i robić. To nie jest czerwone: brak możliwości odtworzenia nie jest konsekwencją do przyjęcia, tylko warunkiem, którego nie spełniamy. Resztę planu da się zapisać bez tego pliku.</p>
     </div>
     <div class="state">
       <p class="st-k">Pusty plan</p>

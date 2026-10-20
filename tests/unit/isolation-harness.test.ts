@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -12,6 +12,7 @@ import {
   OWNER_CONFIG_ROOTS,
   ownerFingerprint,
   removeTempTrees,
+  resolveHomeDir,
 } from '../harness/isolation';
 
 const FAKE_HOME = mkdtempSync(join(tmpdir(), 'acme-home-'));
@@ -63,5 +64,36 @@ describe('kanarek i drzewa tymczasowe', () => {
     const second = createTempTree();
     expect(first).not.toBe(second);
     expect(isInside(first, join(process.cwd(), 'tests', '.tmp'))).toBe(true);
+  });
+});
+
+describe('rozwiazywanie katalogu domowego', () => {
+  const saved = { home: process.env['HOME'], profile: process.env['USERPROFILE'] };
+
+  afterAll(() => {
+    if (saved.home === undefined) delete process.env['HOME'];
+    else process.env['HOME'] = saved.home;
+    if (saved.profile === undefined) delete process.env['USERPROFILE'];
+    else process.env['USERPROFILE'] = saved.profile;
+  });
+
+  it('zwraca sciezke absolutna', () => {
+    expect(isAbsolute(resolveHomeDir())).toBe(true);
+  });
+
+  it('bezpiecznik odmawia startu, gdy katalog domowy jest pusty, i mowi dlaczego', () => {
+    expect(() => assertTestBaseIsSafe(join(FAKE_HOME, 'tests'), '')).toThrow(
+      /nie udalo sie ustalic katalogu domowego/,
+    );
+  });
+
+  it('komunikat o niewiedzy nie udaje komunikatu o trafieniu w konfiguracje', () => {
+    let message = '';
+    try {
+      assertTestBaseIsSafe(join(FAKE_HOME, 'tests'), '');
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).not.toMatch(/zywej konfiguracji/);
   });
 });

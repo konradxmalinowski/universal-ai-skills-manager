@@ -1,8 +1,9 @@
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, relative, resolve, sep } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 
 import { protocol } from 'electron';
 
+import { isPathInside } from './path-containment';
 import { APP_HOST, APP_SCHEME } from './paths';
 
 const CONTENT_TYPES: Readonly<Record<string, string>> = {
@@ -66,16 +67,11 @@ function contentTypeFor(filePath: string): string {
   return CONTENT_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
 }
 
-function isInside(child: string, parent: string): boolean {
-  const rel = relative(parent, child);
-  return rel !== '' && !rel.startsWith(`..${sep}`) && rel !== '..' && !rel.startsWith('..');
-}
-
 async function resolveTarget(root: string, pathname: string): Promise<string | null> {
   const decoded = decodeURIComponent(pathname).replace(/^\/+/, '');
   const candidate = resolve(join(root, decoded === '' ? 'index.html' : decoded));
 
-  if (candidate !== resolve(root) && !isInside(candidate, resolve(root))) return null;
+  if (!isPathInside(candidate, root, { allowSame: true })) return null;
 
   try {
     const info = await stat(candidate);

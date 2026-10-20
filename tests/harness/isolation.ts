@@ -9,7 +9,7 @@ import {
   statSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import path, { isAbsolute, join, resolve } from 'node:path';
 
 /**
  * Harness izolacji testow, przeniesiony z generatora (ARCHITECTURE 12.2).
@@ -48,14 +48,78 @@ const OWNER_DIRS = [
   '.agents',
 ] as const;
 
-export function isInside(child: string, parent: string): boolean {
-  const rel = relative(resolve(parent), resolve(child));
-  return rel !== '' && !rel.startsWith('..') && !rel.includes(`..`);
+/**
+ * Minimalny kontrakt na modul `path`. Istnieje po to, zeby test mogl podstawic
+ * `path.win32` i sprawdzic semantyke Windowsa na dowolnym systemie.
+ */
+export interface PathApi {
+  resolve(...segments: string[]): string;
+  relative(from: string, to: string): string;
+  isAbsolute(value: string): boolean;
 }
 
-export function assertTestBaseIsSafe(base: string, home: string = homedir()): void {
+/**
+ * Czy `child` lezy w `parent`.
+ *
+ * Wartownik `isAbsolute` nie jest ozdoba: na Windowsie `path.relative` miedzy
+ * sciezkami na roznych dyskach nie zwraca `..`, tylko gotowa sciezke absolutna
+ * do celu. Bez tego sprawdzenia `D:\\a\\repo` wychodzilo jako lezace
+ * w `C:\\Users\\x\\.claude`, czyli bezpiecznik blokowal caly obszar roboczy CI.
+ * Regula pochodzi z generatora i tam byla kompletna - tu zostala zgubiona
+ * i przywrocona po awarii na runnerze Windows.
+ */
+export function isInsideWith(pathApi: PathApi, child: string, parent: string): boolean {
+  const rel = pathApi.relative(pathApi.resolve(parent), pathApi.resolve(child));
+  return rel !== '' && !rel.startsWith('..') && !pathApi.isAbsolute(rel);
+}
+
+export function isInside(child: string, parent: string): boolean {
+  return isInsideWith(path, child, parent);
+}
+
+/**
+ * Katalog domowy wlasciciela. `os.homedir()` czyta `USERPROFILE` na Windowsie
+ * i `HOME` na POSIX, ale moze zwrocic pusta wartosc, jesli zadnego z nich nie
+ * ma. Wtedy bezpiecznik ma powiedziec wprost, ze nie zdolal ustalic katalogu
+ * domowego, a nie ze baza testow lezy w zywej konfiguracji - mylacy komunikat
+ * kosztuje pol godziny czytania logu.
+ */
+const UNKNOWN_HOME_MESSAGE =
+  'nie udalo sie ustalic katalogu domowego (pusty os.homedir(), brak USERPROFILE i HOME) - ' +
+  'bezpiecznik testow odmawia startu, bo nie ma jak sprawdzic, czy katalog bazowy nie lezy ' +
+  'w zywej konfiguracji';
+
+export function resolveHomeDir(): string {
+  const candidates = [safeHomedir(), process.env['USERPROFILE'], process.env['HOME']];
+  for (const candidate of candidates) {
+    if (candidate !== undefined && candidate !== '' && isAbsolute(candidate)) {
+      return resolve(candidate);
+    }
+  }
+  throw new Error(UNKNOWN_HOME_MESSAGE);
+}
+
+/**
+ * Podany katalog domowy musi byc uzywalny. Pusta albo relatywna wartosc
+ * znaczy, ze nie wiemy, gdzie jest konfiguracja wlasciciela - a wtedy jedyna
+ * uczciwa odpowiedz to odmowa z komunikatem o niewiedzy, nie o trafieniu.
+ */
+function usableHome(home: string): string {
+  if (home === '' || !isAbsolute(home)) throw new Error(UNKNOWN_HOME_MESSAGE);
+  return resolve(home);
+}
+
+function safeHomedir(): string | undefined {
+  try {
+    return homedir();
+  } catch {
+    return undefined;
+  }
+}
+
+export function assertTestBaseIsSafe(base: string, home?: string): void {
   const resolvedBase = resolve(base);
-  const resolvedHome = resolve(home);
+  const resolvedHome = home === undefined ? resolveHomeDir() : usableHome(home);
 
   if (resolvedBase === resolvedHome) {
     throw new Error('katalog bazowy testow nie moze byc katalogiem domowym');

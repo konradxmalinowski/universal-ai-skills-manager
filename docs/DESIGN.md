@@ -202,21 +202,31 @@ Pomocniczy token `on-accent` (`#000000` ciemny, `#FFFFFF` jasny) to etykieta na 
 |---|---|---|
 | `destructive` | `#F2705D` | `#B3261E` |
 
-Czerwień jest **jedynym innym kolorem w całym systemie** i znaczy wyłącznie „tego nie
-cofniesz": usunięcie z dysku oraz błąd, po którym nie udało się odtworzyć stanu. **Nigdzie
-więcej, w żadnym stanie, w żadnej ilustracji.**
+Czerwień jest **jedynym innym kolorem w całym systemie** i znaczy: **ta operacja usuwa coś,
+co istnieje teraz, a przywrócenie wymaga osobnego, świadomego kroku.** Dotyczy to usunięcia
+pliku z dysku oraz błędu, po którym aplikacja nie przywróciła poprzedniego stanu (plik, który
+istniał, nie wrócił sam). **Nigdzie więcej, w żadnym stanie, w żadnej ilustracji.**
+
+Reguła jest oparta na prawdzie, nie na skrócie. „Tego nie cofniesz" byłoby nieprawdą, bo
+architektura gwarantuje kopię przed każdym zapisem. Czerwień ma jednak uzasadnienie
+materialne: usunięcie jest **gorsze od nadpisania**. Po nadpisaniu plik dalej istnieje i ma
+treść; po usunięciu nie ma go wcale, a odzyskanie wymaga, żeby użytkownik wiedział o
+Historii, znalazł ją i wykonał osobną operację. Konwencja nie czyta instrukcji.
 
 ### Skala intensywności: reguła nadrzędna
 
-**Intensywność koloru rośnie z wagą konsekwencji, a czerwień znaczy wyłącznie „tego nie
-cofniesz".**
+**Intensywność koloru rośnie z wagą konsekwencji. Zaznaczenie to baza kobaltu, nadpisanie to
+najjaśniejszy kobalt plus słowo, usunięcie to czerwień (ta operacja usuwa coś, co istnieje
+teraz, a przywrócenie wymaga osobnego, świadomego kroku). Potwierdzony wynik nie dostaje
+koloru w ogóle.**
 
 | Waga konsekwencji | Wygląd |
 |---|---|
 | zapisane i potwierdzone | **bez koloru**: kolor `text` plus słowo („Zapisano"). Sukces nie potrzebuje pilności, a każdy kolor wydany na sukces osłabia sygnał zagrożenia |
 | zaznaczenie, akcja, fokus | `cobalt-300` |
 | **nadpisze istniejący plik** | `cobalt-200`, najjaśniejszy (w jasnym motywie najciemniejszy) stopień, **plus słowo „nadpisze", plus waga 700**, plus pasek 3 px i tło `cobalt-600` |
-| nieodwracalne | `destructive` |
+| **usunięcie**: znika coś, co istnieje teraz, przywrócenie osobnym krokiem | `destructive` |
+| **zablokowane**: aplikacja nie potrafi zrobić kopii | **bez koloru**: pasek 4 px w `text`, słowo „Zablokowane", powód |
 
 To zastępuje żółć. Konsekwencje, które są częścią reguły:
 
@@ -227,16 +237,28 @@ To zastępuje żółć. Konsekwencje, które są częścią reguły:
 - **Poziom zgodności nie używa koloru.** `Pełna`, `Częściowa`, `Z ostrzeżeniami`, `Brak
   konwersji` pokazują słowo i cztery segmenty (4, 3, 2, 0 wypełnionych). Brak koloru jest
   dziś mocniej uzasadniony niż przy poprzedniej palecie: jedyny kolor poza kobaltem to
-  czerwień, a ta jest zarezerwowana.
+  czerwień, a ta jest zarezerwowana na usunięcie.
 - **Błąd odwracalny jest neutralny.** Gdy aplikacja wycofała nieudany zapis, błąd dostaje
-  gruby pasek (4 px) w kolorze `text` i słowo „Błąd". Czerwień dostaje wyłącznie błąd, po
-  którym cofnięcie się nie udało. Błąd walidacji pola: ramka 2 px w `text` i słowo „Błąd".
+  gruby pasek (4 px) w kolorze `text` i słowo „Błąd". Czerwień dostaje błąd, po którym
+  aplikacja nie przywróciła stanu i odzyskanie wymaga ręcznego kroku. Błąd walidacji pola:
+  ramka 2 px w `text` i słowo „Błąd".
 - **Diff:** tła wierszy neutralne. Kolor niesie plik, nigdy linijka.
-- **Usunięcie jest czerwone nawet wtedy, gdy kopia jest w Historii.** Aplikacja zawsze robi
-  kopię przed zapisem (`ARCHITECTURE.md` 8.3), więc usunięcie jest odtwarzalne, ale
-  odtworzenie jest osobną, świadomą operacją, a plik znika z dysku. Czerwień oznacza tu
-  „plik zniknie, aplikacja go nie odtworzy sama". Jeżeli właściciel woli czerwień tylko dla
-  usunięć bez kopii, wystarczy zmienić jedną klasę (`.reg-row--del`) i licznik w plakacie.
+- **Usunięcie jest czerwone, mimo że kopia jest w Historii.** Aplikacja zawsze robi kopię
+  przed zapisem (`ARCHITECTURE.md` 8.3), więc usunięcie jest odtwarzalne. Ale plik znika z
+  dysku, a odtworzenie jest osobną, świadomą operacją, o której użytkownik musi wiedzieć.
+  Czerwień opisuje tę materialną różnicę, nie „nieodwracalność".
+- **Operacja bez możliwości zrobienia kopii jest zablokowana, nie czerwona.** Jeśli aplikacja
+  nie potrafi zabezpieczyć kopią (brak uprawnień, cel poza zakresem kopii zapasowej),
+  **odmawia wykonania i mówi dlaczego**, zamiast ostrzegać i robić. Czerwień ostrzega przed
+  konsekwencją, którą użytkownik może świadomie przyjąć. Brak możliwości odtworzenia nie jest
+  konsekwencją do przyjęcia, tylko warunkiem, którego nie spełniamy. Stan „Zablokowane" jest
+  neutralny (pasek 4 px w `text`, słowo, powód) i ma własną kartę w sekcji 6 podglądu.
+  **Konsekwencja architektoniczna poza tym dokumentem:** gwarancja „kopia przed zapisem" musi
+  być **twardym warunkiem wstępnym** zapisu, nie ostrzeżeniem. Architekt powinien
+  odzwierciedlić to w kontrakcie adaptera (`ARCHITECTURE.md` sekcje 5 i 8.3, ADR 0012 i 0013):
+  adapter lub `WriteGate` musi umieć zwrócić wynik „nie da się zabezpieczyć kopią" (z powodem
+  dla użytkownika) jeszcze na etapie planu, a plan oznacza taki plik jako zablokowany i nie
+  dopuszcza go do `sync:apply`.
 
 ### Akcent
 
@@ -402,23 +424,6 @@ Skróty są widoczne w marginesie rejestru małym monem (`kbd`, 12 px), nie ukry
 powierzchni. W rejestrze pierścień obejmuje cały wiersz od wewnątrz. Widoczny w obu
 motywach: `cobalt-300` na `background` ma 8.31:1 (ciemny) i 7.44:1 (jasny).
 
-## Status: zatwierdzony
-
-Właściciel produktu zatwierdził ten system 2026-10-20, po obejrzeniu
-`docs/design-preview.html` w przeglądarce. Od tej chwili ten dokument jest źródłem prawdy
-dla każdej decyzji wizualnej w projekcie.
-
-Jedno zastrzeżenie zgłoszone przy zatwierdzaniu i rozstrzygnięte: odróżnialność
-`cobalt-200` od `cobalt-300` obok siebie wynosi 1,38:1 w motywie ciemnym, co jest małym
-kontrastem. Nie jest to kryterium WCAG, bo ono dotyczy tekstu i elementów interaktywnych
-wobec tła, a nie dwóch stopni tego samego koloru obok siebie. Wszystkie 23 pary w tabeli
-kontrastów przechodzą z zapasem, przy najniższej wartości 5,34:1. Sygnał nadpisania niesie
-zestaw cech, w którym kolor jest ostatni w kolejności: pasek 3 px, tło `cobalt-600`, słowo
-„nadpisze", waga 700 i znak zamiany w marginesie. Właściciel uznał to za wystarczające.
-
-Konsekwencja do pilnowania przy każdej przyszłej korekcie palety: `cobalt-200` nie wolno
-zbliżać do `cobalt-300`, bo różnica jest już na granicy komfortu.
-
 ## Decisions Log
 
 ### Zmiana kierunku, 2026-10-20 (obowiązuje)
@@ -439,6 +444,27 @@ klawiatura, brak gradientów, wyrównanie do lewej.
 | 7 | Nowa skala semantyczna: intensywność rośnie z wagą konsekwencji. `cobalt-300` akcja, `cobalt-200` nadpisanie (plus słowo, waga, pasek, tło), czerwień nieodwracalne, sukces bez koloru | konsultacja |
 | 8 | Cabinet Grotesk (Fontshare) zamiast Newsreadera, do zdania, tytułów, spisu treści i liczb. Podział ról: grotesk mówi, sans steruje, mono cytuje plik | konsultacja |
 | 9 | Fokus w `cobalt-300` ze szczeliną w kolorze tła (zamiast pierścienia „w kolorze papieru") | konsultacja |
+
+### Korekta reguły czerwieni, 2026-10-20 (obowiązuje, zastępuje brzmienie z wpisów 3, 7 i 21)
+
+Autor wszystkich trzech wpisów: **konsultacja po zgłoszeniu wykonawcy**. Wykonawca zgłosił
+napięcie między czerwienią dla usunięć a regułą „tego nie cofniesz", skoro aplikacja zawsze
+robi kopię przed zapisem. Rozstrzygnięcie: **kolor zostaje, zmienia się reguła.**
+
+| # | Korekta | Kto |
+|---|---|---|
+| 22 | Reguła czerwieni brzmi: **ta operacja usuwa coś, co istnieje teraz, a przywrócenie wymaga osobnego, świadomego kroku.** Stare brzmienie („czerwień znaczy wyłącznie «tego nie cofniesz»") było **nieprawdziwe wobec gwarancji kopii** i zepsułoby się przy pierwszym użytkowniku, który zauważy, że usunięty plik da się odzyskać z Historii. Usunięcie jest materialnie gorsze od nadpisania, więc czerwień zostaje | konsultacja po zgłoszeniu wykonawcy |
+| 23 | Nowy przypadek: operacja, której aplikacja nie potrafi zabezpieczyć kopią, jest **zablokowana, nie czerwona**. Aplikacja odmawia i mówi dlaczego | konsultacja po zgłoszeniu wykonawcy |
+| 24 | Konsekwencja architektoniczna reguły 23 (twardy warunek wstępny „kopia przed zapisem", wynik „nie da się zabezpieczyć kopią" w kontrakcie adaptera) przekazana do architekta | konsultacja po zgłoszeniu wykonawcy |
+
+Poprawione brzmienia (zachowane w historii, nie usunięte):
+
+| Wpis | Stare brzmienie | Status |
+|---|---|---|
+| 3 | „Czerwień jako jedyny inny kolor, wyłącznie dla nieodwracalnego" | poprawione przez 22: „nieodwracalne" było nieprawdziwe |
+| 7 | „czerwień nieodwracalne" w skali semantycznej | poprawione przez 22 i 23 |
+| 21 | „czerwień tylko dla błędu bez cofnięcia" | poprawione: czerwień dla błędu, po którym stan nie wrócił i odzyskanie wymaga ręcznego kroku |
+| c (wykonawcze) | „Usunięcie jest czerwone mimo kopii w Historii, do rewizji" | rozstrzygnięte przez 22: czerwień zostaje, zmieniło się uzasadnienie |
 
 ### Z pierwszej wersji, nadal obowiązujące
 
@@ -473,7 +499,7 @@ klawiatura, brak gradientów, wyrównanie do lewej.
 |---|---|---|
 | a | Tło wiersza i paska nadpisania w `cobalt-600`, pasek 3 px w `cobalt-200` | różnica `cobalt-200` od `cobalt-300` jest za mała, żeby nieść sygnał sama (patrz Kontrast) |
 | b | W jasnym motywie `cobalt-200` jest ciemniejszy od bazy | najintensywniejszy stopień musi być najbardziej kontrastowy wobec tła w obu motywach |
-| c | Usunięcie jest czerwone mimo kopii w Historii | usunięcie z dysku jest osobną, świadomą operacją do odtworzenia; do rewizji przez właściciela |
+| c | Usunięcie jest czerwone mimo kopii w Historii | **rozstrzygnięte** wpisem 22: czerwień zostaje, reguła przepisana |
 | d | Liczba „zmian" w plakacie jest sumą wszystkich plików (zawiera nadpisania i usunięcia); rachunek rozbija ją na rozłączne kategorie | zdanie „Zapis zmieni 14 plików" i przycisk „Zapisz 14 zmian" wymagają jednej sumy |
 | e | Granice pól `text-muted`, nie `hairline` | `hairline` ma za mały kontrast dla WCAG 1.4.11 |
 | f | Promień 2 px na kontrolkach | kierunek przyrządu, bez zaokrągleń typowych dla kategorii |
@@ -509,7 +535,7 @@ mianownik kategorii. Jedno świadome odejście od badania: tło jest **czystą**
 użytkownika, więc cała kategoria optymalizuje szybkość akcji, a ten produkt musi
 optymalizować pewność przed akcją.** To uzasadnia wszystkie trzy ryzyka:
 
-- diff jak korekta oszczędza czerwień na to, co jest naprawdę nieodwracalne (ryzyko 1),
+- diff jak korekta oszczędza czerwień na to, co znika z dysku (ryzyko 1),
 - plakat z liczbami mówi, co się stanie, zanim użytkownik cokolwiek zatwierdzi (ryzyko 2),
 - spis treści zamiast ikon odbiera interfejsowi „narzędziowy" wygląd launchera, który
   zachęca do szybkiego klikania (ryzyko 3).
