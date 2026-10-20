@@ -448,7 +448,7 @@ interface ToolAdapter {
   parse(raw: RawElement): ParseResult<ToolNativeElement>;
   toCanonical(native: ToolNativeElement): LibraryItem;
 
-  capabilities(item: LibraryItem): CompatibilityVerdict;
+  capabilities(item: LibraryItem): CompatibilityVerdict;   // czysta, bez I/O
   plan(items: LibraryItem[], root: RootId): Promise<WritePlan>;
   apply(plan: WritePlan, gate: WriteGate): Promise<ApplyReport>;
   verify(plan: WritePlan, root: RootId): Promise<VerifyReport>;
@@ -457,7 +457,7 @@ interface ToolAdapter {
 }
 ```
 
-Pięć własności kontraktu, każda z uzasadnieniem:
+Sześć własności kontraktu, każda z uzasadnieniem:
 
 **`plan` jest oddzielone od `apply`.** Wymagania mówią "wyświetlić plan zmian" przed zapisem
 i "nie nadpisywać po cichu". Plan jest wartością, którą można pokazać, zserializować, porównać
@@ -469,7 +469,15 @@ niczego poza bramką. Dzięki temu kontrola ścieżek, backup i zapis atomowy s�
 i nie da się ich pominąć przez pomyłkę w nowym adapterze.
 
 **`capabilities` zwraca verdykt, nie boolean.** Wymagania wymieniają cztery poziomy zgodności.
-Boolean by je spłaszczył i wymusił zgadywanie w UI.
+Boolean by je spłaszczył i wymusił zgadywanie w UI. Funkcja jest czysta i synchroniczna, bez
+dostępu do dysku: dzięki temu zestaw testów kontraktowych działa bez systemu plików, a interfejs
+wylicza verdykt dla całej listy bez I/O. Ta czystość jest powodem, dla którego możliwość
+zrobienia kopii nie jest piątym stopniem tego verdyktu, tylko osobną własnością planu (niżej).
+
+**`plan` ustala `recoverability` dla każdego dotykanego pliku.** Plan sonduje odczytem, czy
+aplikacja jest w stanie zabezpieczyć kopią każdy plik, którego dotknie, i oznacza wpis jako
+`recoverable` albo `blocked` z powodem. Plan z choćby jednym wpisem `blocked` nie jest
+wykonywalny: `apply` odmawia uruchomienia, zamiast wykonać część i stanąć (ADR 0028).
 
 **`verify` jest częścią kontraktu, nie dodatkiem.** "Zweryfikować rezultat" jest w wymaganiach
 synchronizacji. Weryfikacja czyta cel z powrotem i porównuje z planem; dopiero jej wynik zamyka
@@ -635,6 +643,11 @@ Niezaufane dane, bez wyjątku. Konkretnie:
 
 `WriteGate` to jedyna droga zapisu. Każdy zapis przechodzi:
 
+0. **Warunek wstępny: kopia musi być możliwa.** Nie jest to krok, który może się nie udać,
+   tylko warunek wykonania. `WriteGate` nie ma ścieżki kodu, która zapisuje bez udanej kopii
+   stanu poprzedniego. Dla pliku, który dopiero powstaje, kopią jest zapis faktu nieistnienia,
+   żeby rollback miał co przywrócić. Brak możliwości kopii jest wykrywany już na etapie `plan`
+   i blokuje plan, a nie przerywa zapis w połowie (ADR 0028).
 1. Kanonizacja ścieżki (`realpath` katalogu nadrzędnego) i kontrola, czy leży pod zadeklarowanym
    rootem celu. Na Windowsie dodatkowo odrzucenie ścieżek UNC i `\\?\`.
 2. Backup dotykanego stanu do content store, z wpisem w logu operacji.
@@ -908,6 +921,12 @@ Generator ma mechanizm, który działa i którego nie ma po co wymyślać od now
 W generatorze ten mechanizm jest asercją w `after()`. Przenosimy go 1:1, bo wartość jest dokładnie
 taka, jak jego koszt: zero.
 
+Zastrzeżenie, którego w Etapie 0 nie dopisałem, a które ujawnił pierwszy przebieg macierzy:
+przeniesienie 1:1 dotyczy reguły, nie jej warunku. Na runnerze Windowsa harness uznał katalog
+roboczy CI za żywą konfigurację i zablokował cały przebieg przed uruchomieniem jakiegokolwiek
+testu. Warunek był napisany pod maszynę dewelopera, gdzie katalog domowy i katalog roboczy to
+dwa różne drzewa. Reguła jest dobra, jej warunek musi znać środowisko CI. Stąd sekcja 12.5.
+
 ### 12.3 Korpus fixture'ów
 
 Wszystkie fixture'y są pisane od zera jako syntetyczne drzewa. **Żaden nie pochodzi z prawdziwej
@@ -956,7 +975,33 @@ i sprawdza, że backup istnieje, że stan jest spójny i że ponowny przebieg do
 - zakaz wykonania: żaden adapter nie woła `child_process` (test statyczny plus reguła lintu),
 - brak cichego nadpisania: zapis bez planu i bez zatwierdzenia nie przechodzi.
 
-### 12.5 Co bierzemy z korpusu regresyjnego generatora
+### 12.5 Każdy bezpiecznik ma test na ścieżce pozytywnej
+
+Reguła projektowa, nie jednorazowa lekcja: **mechanizm ochronny musi mieć test, że przepuszcza
+to, co bezpieczne, a nie tylko że blokuje to, co niebezpieczne.**
+
+Powód jest konkretny i kosztował jeden cel macierzy. Harness izolacji miał dziewięć testów
+sprawdzających, że odmawia startu w żywej konfiguracji, i ani jednego sprawdzającego, że startuje
+w obcym, nieznanym środowisku. Na runnerze Windowsa odmówił, bo katalog roboczy CI wpadł pod jego
+warunek, i zablokował przebieg przed pierwszym testem. Dziewięć testów negatywnych przeszło.
+Żaden nie mógł tego wykryć, bo wszystkie pytały o to samo.
+
+Bezpiecznik, który blokuje za dużo, nie jest bezpieczny, tylko niedostępny, i to na platformie,
+której nie przewidziano. Reguła obowiązuje każdy mechanizm, który czemuś odmawia:
+
+| Mechanizm | Test negatywny (ma zablokować) | Test pozytywny (ma przepuścić) |
+|---|---|---|
+| Harness izolacji | katalog w `~/.claude`, `~/.codex`, `~/.agents`, `$HOME` | katalog tymczasowy, katalog roboczy CI, katalog o nazwie myląco podobnej do żywej konfiguracji |
+| `WriteGate`, kontrola prefiksu | `..`, symlink wyprowadzający, UNC, `\\?\`, nazwa zarezerwowana | ścieżka ze spacjami, znakami spoza ASCII, głęboko zagnieżdżona, pod symlinkiem **wewnątrz** roota |
+| Preflight TOML (ADR 0011) | dotted key poza tabelą, tablica tabel w zakresie zarządzanym | `config.toml` z komentarzami, sekcjami obcymi i pustymi liniami, czyli plik realny |
+| `recoverability` (ADR 0028) | plik nieczytelny, katalog tylko do czytania, cel niebędący zwykłym plikiem | plik istniejący i czytelny, plik dopiero tworzony, plik tylko do czytania w katalogu zapisywalnym |
+| Klasyfikator sekretów | pliki credentials, wzorce kluczy, wysoka entropia | skill mówiący o tokenach w treści, nazwa pliku zawierająca słowo `key` w innym znaczeniu |
+| Blokada sieci (ADR 0008) | żądanie do hosta zewnętrznego | `file://` i protokół aplikacji muszą działać |
+
+Każdy wiersz tej tabeli ma dwie kolumny i obie są wymagane. Kryterium akceptacji jest proste:
+żaden bezpiecznik nie wchodzi do repozytorium z samą kolumną lewą.
+
+### 12.6 Co bierzemy z korpusu regresyjnego generatora
 
 Generator ma 1328 linii testów i 123 przechodzące przypadki. Przenoszalna jest **metoda i część
 przypadków**, nie same asercje, bo one mówią o generatorze, nie o aplikacji. Konkretnie bierzemy:
@@ -1009,8 +1054,10 @@ wygodą, a warunkiem (ADR 0010).
 
 ### 14.1 `ci.yml` - każdy PR i każdy push
 
-Macierz: `ubuntu-latest`, `macos-14` (arm64), `macos-13` (x64), `windows-latest`. Node z linii
-LTS, przypięty. Cache npm.
+Cztery cele: `linux-x64` (`ubuntu-latest`), `macos-arm64` (`macos-15`), `macos-x64`
+(`macos-15-intel`), `windows-x64` (`windows-latest`). Node z linii LTS, przypięty. Cache npm.
+Etykiety obrazów są przypięte do celów i podlegają wymianie, gdy GitHub wycofuje obraz; cele
+się nie zmieniają (ADR 0010).
 
 Kroki: lint (ESLint plus Prettier plus reguła granic modułów), typecheck (`tsc --noEmit`,
 `strict` włączone), testy jednostkowe i kontraktowe, testy integracyjne, E2E Playwright

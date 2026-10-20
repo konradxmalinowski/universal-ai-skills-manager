@@ -1,7 +1,13 @@
 # ADR 0013: Kontrakt adaptera z deklarowanymi zdolnościami zamiast domniemania
 
-Status: zaakceptowane
+Status: zaakceptowane, rozszerzone przez ADR 0028
 Data: 2026-10-20
+
+> Rozszerzenie wprowadzone przez ADR 0028: kontrakt ma szósty element. `plan` ustala dla każdego
+> dotykanego pliku wynik `recoverability` (`recoverable` albo `blocked`), a plan z choćby jednym
+> wpisem `blocked` nie jest wykonywalny. Nie jest to piąty stopień verdyktu `capabilities`:
+> zgodność opisuje element i jest wyliczana bez I/O, a możliwość kopii opisuje plik na dysku
+> w danej chwili. Uzasadnienie w ADR 0028.
 
 ## Kontekst
 

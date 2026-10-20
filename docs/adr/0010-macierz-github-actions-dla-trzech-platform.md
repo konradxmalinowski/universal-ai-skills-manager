@@ -27,17 +27,26 @@ dopiero przy tagu, czyli po tym, jak kod jest już zmergowany.
 
 Dwa workflow w GitHub Actions.
 
-`ci.yml` na każdym PR i pushu, macierz: `ubuntu-latest`, `macos-14` (arm64), `macos-13` (x64),
-`windows-latest`. Kroki: lint, typecheck, testy jednostkowe i kontraktowe, testy integracyjne,
-E2E Playwright na zbudowanej aplikacji, build próbny, `gitleaks`, `npm audit`.
+`ci.yml` na każdym PR i pushu, cztery cele: `linux-x64` (`ubuntu-latest`), `macos-arm64`
+(`macos-15`), `macos-x64` (`macos-15-intel`), `windows-x64` (`windows-latest`). Kroki: lint,
+typecheck, testy jednostkowe i kontraktowe, testy integracyjne, E2E Playwright na zbudowanej
+aplikacji, build próbny, `gitleaks`, `npm audit`.
+
+Etykiety obrazów są przypięte do celów, nie do architektury decyzji. Pierwotna wersja tego ADR
+wymieniała `macos-14` i `macos-13`; `macos-13` został wycofany, a `macos-14` oznaczony jako
+przestarzały, więc `ci.yml` używa `macos-15` i `macos-15-intel`. Cele są te same, zmieniły się
+nazwy obrazów. Taka podmiana nie wymaga nowego ADR, ale wymaga poprawienia tego, bo dokument,
+który wymienia nieistniejące runnery, kłamie o tym, co stoi w `.github/workflows/ci.yml`.
 
 `release.yml` na tag `v*`: `dmg` i `zip` dla macOS arm64 i x64, `nsis` i wersja przenośna
 dla Windows x64, `AppImage` i `deb` dla Linux x64, plus `SHA256SUMS`. Uprawnienia ograniczone
 do `contents: write`, żadnych sekretów (ADR 0003).
 
-Cztery wpisy macierzy, nie trzy, z jednego powodu: `better-sqlite3` to moduł natywny i macOS
-arm64 oraz x64 to osobne cele. Jeden wpis dla macOS oznaczałby, że o problemie dowiadujemy się
-przy pierwszym wydaniu.
+Cztery cele, nie trzy, z jednego powodu: `better-sqlite3` to moduł natywny i macOS arm64 oraz
+x64 to osobne cele. Jeden wpis dla macOS oznaczałby, że o problemie dowiadujemy się przy
+pierwszym wydaniu. Pierwszy realny przebieg macierzy to potwierdził z drugiej strony: oba cele
+macOS przeszły, a Windows nie dotarł nawet do testów, więc moduł natywny ma tam nadal status
+niezweryfikowany (ROADMAP, ryzyko R2).
 
 Macierz działa od Etapu 1, nie od Etapu 9.
 

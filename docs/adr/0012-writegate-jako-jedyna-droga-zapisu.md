@@ -1,7 +1,12 @@
 # ADR 0012: `WriteGate` jako jedyna droga zapisu
 
-Status: zaakceptowane
+Status: zaakceptowane, zmienione przez ADR 0028
 Data: 2026-10-20
+
+> Zmiana wprowadzona przez ADR 0028: krok 2 (kopia dotykanego stanu) nie jest krokiem, który
+> może się nie udać, tylko **twardym warunkiem wstępnym**. Jeśli kopia nie jest możliwa, operacja
+> nie jest wykonywana, a brak możliwości kopii jest wykrywany już na etapie `plan`, nie przy
+> zapisie. Reszta tego rekordu obowiązuje bez zmian.
 
 ## Kontekst
 

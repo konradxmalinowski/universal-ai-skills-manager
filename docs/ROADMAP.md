@@ -242,8 +242,8 @@ Kryteria akceptacji:
 Zakres: `capabilities`, `plan`, `apply`, `verify` w obu adapterach. Mapowanie formatów, w tym
 agent do dwóch miejsc w Codeksie i komenda na skill (ADR 0021). `SegmentTomlEditor` z preflightem
 i weryfikacją semantyczną (ADR 0011). Zarządzanie blokiem między markerami dla instrukcji
-globalnych (ADR 0025). Tryb materializacji (ADR 0015). Podgląd plików przed zapisem. Zestaw
-testów kontraktowych.
+globalnych (ADR 0025). Tryb materializacji (ADR 0015). Sonda `recoverability` na każdym wpisie
+planu (ADR 0028). Podgląd plików przed zapisem. Zestaw testów kontraktowych.
 
 Kryteria akceptacji:
 1. Każdy obsługiwany typ elementu eksportuje się do obu narzędzi i powstały plik jest przez
@@ -287,6 +287,12 @@ Kryteria akceptacji:
    na Windowsie, nazwy z NUL, nazwy zarezerwowanej Windowsa.
 7. Pełny przepływ przechodzi w teście E2E na trzech systemach: import, edycja, plan
    synchronizacji, zatwierdzenie, weryfikacja, cofnięcie.
+8. Operacja, której nie da się zabezpieczyć kopią, jest zablokowana **na etapie planu**
+   i nie daje się zastosować (ADR 0028). Test dla każdej wykrywalnej przenośnie przyczyny:
+   plik docelowy nieczytelny, katalog tylko do czytania, cel niebędący zwykłym plikiem, brak
+   miejsca w `userData` (przez podstawienie portu, nie zapełnianie dysku). Przyczyny systemowe
+   (naruszenie współdzielenia i ACL z zapisem bez czytania na Windowsie) w macierzy CI.
+   Asercja negatywna: `apply` planu z wpisem `blocked` nie zapisuje ani jednego bajtu.
 
 ### Etap 6: Porównywanie i scalanie (po MVP)
 
@@ -344,10 +350,13 @@ Kryteria akceptacji:
    przechodzą, w tym: ścieżki ze spacjami i znakami spoza ASCII, brak uprawnień, pliki uszkodzone,
    przerwana synchronizacja, potencjalne sekrety, path traversal.
 3. Testy bezpieczeństwa z ARCHITECTURE sekcja 12.4 przechodzą jako asercje negatywne.
-4. Ani jeden fixture nie pochodzi z realnej konfiguracji. `gitleaks` w CI przechodzi na całej
+4. Każdy mechanizm ochronny ma test na ścieżce pozytywnej, nie tylko negatywnej (ARCHITECTURE
+   sekcja 12.5). Kryterium jest zero-jedynkowe: żaden bezpiecznik nie ma w repozytorium samych
+   testów sprawdzających, że blokuje.
+5. Ani jeden fixture nie pochodzi z realnej konfiguracji. `gitleaks` w CI przechodzi na całej
    historii, nie tylko na HEAD.
-5. Build produkcyjny powstaje dla wszystkich trzech platform i uruchamia się na każdej z nich.
-6. Testy round-trip property-based przechodzą, a wszystkie udokumentowane wyjątki (`partial`,
+6. Build produkcyjny powstaje dla wszystkich trzech platform i uruchamia się na każdej z nich.
+7. Testy round-trip property-based przechodzą, a wszystkie udokumentowane wyjątki (`partial`,
    `lossy`) są jawne i uzasadnione w kodzie testu.
 
 ### Etap 10: Dokumentacja i wydanie MVP
@@ -406,7 +415,7 @@ Trzy ranked ścieżki wyjścia, gdyby ograniczenie okazało się nieakceptowalne
 
 Wczesny sygnał: preflight odmawia edycji na realnych plikach użytkowników.
 
-### R2: Moduł natywny `better-sqlite3` na czterech celach. Poziom: ŚREDNI do WYSOKIEGO
+### R2: Moduł natywny `better-sqlite3` na czterech celach. Poziom: ŚREDNI (był ŚREDNI do WYSOKIEGO)
 
 Brak prebuildu dla pary wersja Electrona plus platforma wymusza kompilację i pełny toolchain
 na runnerze. Skutek: build nie przechodzi, potencjalnie w dniu wydania.
@@ -415,6 +424,36 @@ Mitygacja (Etap 1, ADR 0007 i 0010): macierz czterech celów działa od Etapu 1,
 akceptacji Etapu 1 obejmuje otwarcie bazy w zbudowanej aplikacji na każdym celu. Baza siedzi
 za portem `IndexStore`, więc wymiana jest możliwa, a dane nie są w bazie (ADR 0014), więc wymiana
 nie oznacza migracji.
+
+**Stan faktyczny po pierwszym przebiegu macierzy, commit `06d1603`:**
+
+| Cel | Wynik | Co to znaczy dla R2 |
+|---|---|---|
+| `macos-arm64` | zielony | moduł natywny potwierdzony, bez przebudowy |
+| `macos-x64` | zielony | moduł natywny potwierdzony, bez przebudowy |
+| `linux-x64` | padł na dwóch testach E2E zapakowanej aplikacji (sandbox Electrona pod `xvfb`) | moduł natywny **działa**: testy integracyjne i E2E przeciw `dist/` przeszły. Awaria dotyczy uruchamiania paczki, nie bazy |
+| `windows-x64` | padł **przed testami**, bo harness izolacji uznał katalog roboczy CI za żywą konfigurację użytkownika | moduł natywny **niezweryfikowany**. To jedyne miejsce, w którym R2 jest nadal otwarte |
+
+Czyli ryzyko spadło na trzech celach z czterech, a nie zniknęło. Spada do NISKIEGO w momencie, w
+którym `windows-x64` przejdzie testy. Oba niepowodzenia naprawia `devsecops-agent` i żadne z nich
+nie dotyczy decyzji z ADR 0007.
+
+Skutek uboczny wart zapisania: na obu macOS-ach prebuild wystarczył, nic nie trzeba było
+przebudowywać, co potwierdza usunięcie `@electron/rebuild` z zależności. Ostateczne potwierdzenie
+zależy od Windowsa, bo to tam ryzyko braku prebuildu jest największe.
+
+Awaria Windowsa wzięła się z mechanizmu, który sam zaprojektowałem: harness izolacji odmawia
+startu, gdy katalog bazowy testów leży w żywej konfiguracji (ARCHITECTURE sekcja 12.2).
+Na runnerze trafił fałszywie dodatnio na katalog roboczy CI. Mechanizm zadziałał zgodnie
+z zamysłem, czyli odmówił zamiast ryzykować, i to jest dobra strona tej awarii. Zła strona: jego
+warunek był napisany pod maszynę dewelopera i nie przewidywał środowiska CI, w którym katalog
+domowy i katalog roboczy mogą być tym samym drzewem. Poprawka należy do warunku, nie do reguły.
+
+Wniosek jest ogólniejszy niż R2 i dlatego trafił do strategii testowania jako reguła projektowa
+(ARCHITECTURE sekcja 12.5): bezpiecznik chroniący konfigurację użytkownika sam stał się punktem
+awarii na platformie, której nie przewidziano, a dziewięć testów sprawdzających, że blokuje, nie
+mogło tego wykryć, bo żaden nie sprawdzał, że przepuszcza. Od teraz każdy mechanizm, który czemuś
+odmawia, ma testy po obu stronach.
 
 ### R3: Symlinki i uprawnienia na Windowsie. Poziom: ŚREDNI
 

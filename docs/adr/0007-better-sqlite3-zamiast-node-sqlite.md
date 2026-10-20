@@ -46,6 +46,11 @@ Tools, `build-essential`). To ryzyko R2 w roadmapie.
 Dlatego macierz czterech celów działa od Etapu 1, a nie od Etapu 9. Wykrycie problemu z modułem
 natywnym na trzy dni przed wydaniem byłoby najdroższym możliwym momentem.
 
+Stan po pierwszym przebiegu macierzy: na obu celach macOS prebuild wystarczył i nic nie trzeba
+było przebudowywać, co pozwoliło usunąć `@electron/rebuild` z zależności. Potwierdzenie jest
+jednak częściowe, bo `windows-x64` nie dotarł do testów, a to tam ryzyko braku prebuildu jest
+największe. Szczegóły w ROADMAP, ryzyko R2.
+
 Mitygacja na wypadek, gdyby koszt okazał się nie do uniesienia: baza siedzi za portem
 `IndexStore`, więc wymiana na implementację bez modułu natywnego jest możliwa. Koszt wymiany:
 utrata FTS5, czyli wyszukiwanie pełnotekstowe trzeba by zrobić samemu albo zaakceptować wolniejsze.
