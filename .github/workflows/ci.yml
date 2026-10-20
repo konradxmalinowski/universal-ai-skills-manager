@@ -102,8 +102,13 @@ jobs:
       # node_modules/electron/dist nie istnieje jeszcze w momencie, w ktorym
       # nadajemy uprawnienia pomocnikowi sandboxa, a pobieranie wchodzi
       # w pierwszy test E2E i wyglada jak jego timeout.
+      #
+      # Wprost `install.js`, a nie `npx electron --version`: ten drugi
+      # uruchamia Chromium, ktore na Linuksie przewraca sie na nieustawionym
+      # pomocniku SUID jeszcze przed krokiem nadajacym mu uprawnienia.
+      # Downloader sam niczego nie uruchamia.
       - name: Pobranie binarki Electrona
-        run: npx electron --version
+        run: node node_modules/electron/install.js
 
       - name: Kontrola typow
         run: npm run typecheck
