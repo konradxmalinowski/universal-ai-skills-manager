@@ -111,6 +111,42 @@ do czegos innego.
 Fixture'y sa wylacznie syntetyczne, konwencja `acme-*` (ADR 0004). Nic
 z prawdziwej konfiguracji nie wchodzi do repozytorium.
 
+## Czego wymagamy od dowodu
+
+Trzy reguly, kazda zrodzona z konkretnej pomylki w tym projekcie, nie
+z teorii.
+
+**Kazdy bezpiecznik ma test na sciezce pozytywnej, nie tylko na negatywnej.**
+To uzasadnienie reguly z ARCHITECTURE 12.5 i jednoczesnie przypadek, ktory ja
+zrodzil. Harness testowy ma odmawiac startu, jesli katalog bazowy lezy
+w konfiguracji wlasciciela. Przy przenoszeniu tej reguly zgubiony zostal
+wartownik `isAbsolute`, przez co na Windowsie **kazda** sciezka na innym dysku
+niz katalog domowy wygladala jak lezaca w `~/.claude`: `path.relative` miedzy
+roznymi dyskami nie zwraca `..`, tylko gotowa sciezke absolutna do celu.
+Testy sprawdzaly tylko, czy bezpiecznik blokuje to, co ma blokowac - i to
+przechodzilo. Nikt nie sprawdzal, czy przepuszcza to, co ma przepuszczac.
+
+Ten sam blad siedzial w kontroli prefiksu dla schematu `app://`, czyli w kodzie
+produkcyjnym. Tam nie byl niedogodnoscia, a obejsciem kontroli zawierania
+sciezki: plik z innego dysku przechodzilby jako lezacy w katalogu builda.
+Dojechalby do wydania, gdybysmy budowali tylko na macOS, bo na macOS i Linuksie
+ten przypadek nie istnieje. Teraz obie kontrole przyjmuja modul `path` jako
+parametr, wiec semantyke Windowsa sprawdza sie przez podstawienie `path.win32`
+na dowolnym systemie (`tests/unit/path-containment.test.ts`).
+
+**Test, ktorego nikt nie widzial padajacego, nie jest testem.** Reguly granic
+warstw maja `npm run test:boundaries`, ktory wstawia zakazany import i wymaga,
+zeby lint padl - plus probe kontrolna, zeby nie zaliczal sie przez to, ze lint
+pada zawsze. Test na wartownik `isAbsolute` zostal w ten sam sposob sprawdzony:
+po cofnieciu poprawki pada, po przywroceniu przechodzi.
+
+**Dowod rozlozony na dwa przebiegi CI nie jest dowodem.** Nie wyklucza, ze
+poprawka jednego celu zepsula drugi, a dokladnie to sie tu stalo: Windows byl
+zielony w jednym przebiegu, Linux w nastepnym, i w tym nastepnym Windows zrobil
+regresje. Wymagamy jednego przebiegu, w ktorym wszystkie cztery cele sa zielone
+naraz. "Trzy z czterech, kazdy kiedy indziej" to stan nieznany, nie stan
+potwierdzony.
+
 ## Zaleznosci i powody
 
 Kryterium akceptacji Etapu 1 punkt 5: kazda pozycja w `package.json` ma powod.
