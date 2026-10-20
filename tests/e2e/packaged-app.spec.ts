@@ -29,6 +29,20 @@ test.afterAll(() => {
 test.describe('zapakowana aplikacja', () => {
   test.skip(executable === null, 'brak paczki probnej - uruchom najpierw `npm run package`');
 
+  /**
+   * Dluzszy limit czasu niz globalny, z obserwacji: pierwszy start swiezo
+   * zbudowanego pakietu potrafi sie przyblokowac na kilkadziesiat sekund,
+   * zanim system przepusci niepodpisana binarke (ADR 0003 - wydania w MVP sa
+   * niepodpisane). Kolejne starty sa natychmiastowe. W CI kazdy przebieg jest
+   * dokladnie w tym stanie, bo paczka powstaje chwile wczesniej.
+   *
+   * Swiadomie limit czasu, a nie `retries`: wolniejszy start to opoznienie,
+   * nie inny wynik. Powtarzanie testu ukrywaloby prawdziwa porazke, a tego
+   * tutaj nie chcemy - ten test jest jedynym dowodem, ze modul natywny laduje
+   * sie z app.asar.unpacked.
+   */
+  test.setTimeout(240_000);
+
   test('startuje z paczki i better-sqlite3 odpowiada z app.asar.unpacked', async () => {
     const { app, page } = await launchPackagedApp(executable as string);
 

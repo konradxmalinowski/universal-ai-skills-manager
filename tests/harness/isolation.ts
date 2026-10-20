@@ -86,8 +86,8 @@ export function isInside(child: string, parent: string): boolean {
  */
 const UNKNOWN_HOME_MESSAGE =
   'nie udalo sie ustalic katalogu domowego (pusty os.homedir(), brak USERPROFILE i HOME) - ' +
-  'bezpiecznik testow odmawia startu, bo nie ma jak sprawdzic, czy katalog bazowy nie lezy ' +
-  'w zywej konfiguracji';
+  'bezpiecznik testow odmawia startu, bo nie ma jak sprawdzic, czy katalog bazowy jest poza ' +
+  'konfiguracja wlasciciela';
 
 export function resolveHomeDir(): string {
   const candidates = [safeHomedir(), process.env['USERPROFILE'], process.env['HOME']];

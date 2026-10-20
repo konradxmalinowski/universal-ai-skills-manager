@@ -24,9 +24,9 @@ describe('kontrola prefiksu sciezki, semantyka Windowsa', () => {
   });
 
   it('wyjscie przez .. nie przechodzi', () => {
-    expect(isPathInsideWith(win32, 'C:\\app\\dist\\renderer\\..\\..\\secret.txt', rendererRoot)).toBe(
-      false,
-    );
+    expect(
+      isPathInsideWith(win32, 'C:\\app\\dist\\renderer\\..\\..\\secret.txt', rendererRoot),
+    ).toBe(false);
   });
 
   it('katalog rowny docelowemu tylko gdy jawnie dozwolony', () => {

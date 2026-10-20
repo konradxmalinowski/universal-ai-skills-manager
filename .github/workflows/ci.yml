@@ -113,6 +113,24 @@ jobs:
       - name: Build probny paczki
         run: npm run package
 
+      # Testy E2E jada z wlaczonym sandboxem Chromium (chromiumSandbox w
+      # tests/e2e/launch.ts), bo inaczej Playwright sam dokladalby
+      # `--no-sandbox` i test hartowania milczalby o tym. Na Linuksie
+      # zapakowany Electron potrzebuje do tego pomocnika z bitem setuid:
+      # Ubuntu 24.04 blokuje nieuprzywilejowane przestrzenie nazw przez
+      # AppArmor, wiec sciezka namespace jest niedostepna.
+      - name: Pomocnik chrome-sandbox w paczce probnej (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          helper="$(find release -maxdepth 2 -name chrome-sandbox -type f -print -quit)"
+          if [ -z "$helper" ]; then
+            echo "nie znalazlem chrome-sandbox w release/ - paczka probna nie powstala?"
+            exit 1
+          fi
+          sudo chown root:root "$helper"
+          sudo chmod 4755 "$helper"
+          ls -l "$helper"
+
       - name: Testy E2E (Linux, pod xvfb)
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum npm run test:e2e

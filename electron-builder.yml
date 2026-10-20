@@ -63,6 +63,10 @@ nsis:
 linux:
   category: Development
   maintainer: universal-ai-skills-manager
+  # Przypiete jawnie, bo nazwa binarki jest uzywana przez testy E2E
+  # (tests/e2e/launch.ts). Domyslna wartosc pochodzi z productName, ktory ma
+  # spacje - a wtedy szukanie binarki po nazwie staje sie zgadywaniem.
+  executableName: universal-ai-skills-manager
   target:
     - target: AppImage
       arch: [x64]

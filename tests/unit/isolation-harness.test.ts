@@ -94,6 +94,7 @@ describe('rozwiazywanie katalogu domowego', () => {
     } catch (error: unknown) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).not.toMatch(/zywej konfiguracji/);
+    expect(message).not.toMatch(/lezy w zywej konfiguracji/);
+    expect(message).toMatch(/nie udalo sie ustalic katalogu domowego/);
   });
 });
