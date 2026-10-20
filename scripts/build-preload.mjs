@@ -1,4 +1,4 @@
-import { build } from 'esbuild';
+import { build, context } from 'esbuild';
 
 /**
  * Preload jest budowany jako jeden plik, bo musi byc. Sandboxowany preload
@@ -7,7 +7,7 @@ import { build } from 'esbuild';
  * modulow. Wyjscie z `tsc` z wieloma plikami padloby tu w czasie dzialania,
  * a nie przy kompilacji.
  */
-await build({
+const options = {
   entryPoints: ['src/preload/bridge.ts'],
   outfile: 'dist/preload/bridge.js',
   bundle: true,
@@ -17,4 +17,12 @@ await build({
   sourcemap: true,
   external: ['electron'],
   logLevel: 'info',
-});
+};
+
+if (process.argv.includes('--watch')) {
+  const ctx = await context(options);
+  await ctx.watch();
+  process.stdout.write('[preload] obserwuje zmiany\n');
+} else {
+  await build(options);
+}

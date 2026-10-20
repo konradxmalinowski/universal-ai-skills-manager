@@ -180,6 +180,19 @@ export default tseslint.config(
     },
   },
 
+  // Skrypty deweloperskie w CommonJS. Jeden z nich jest wstrzykiwany do
+  // procesu glownego Electrona przez NODE_OPTIONS, wiec musi byc CJS.
+  {
+    files: ['scripts/**/*.cjs'],
+    languageOptions: {
+      globals: { ...globals.node },
+      sourceType: 'commonjs',
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   {
     files: ['tests/**/*.ts'],
     languageOptions: {

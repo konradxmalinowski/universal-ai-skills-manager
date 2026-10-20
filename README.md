@@ -28,10 +28,28 @@ npm run dev        # build i uruchomienie aplikacji
 ```
 
 `npm run dev` nie stawia serwera deweloperskiego. Renderer jest serwowany
-z tego samego schematu `app://` co w wydaniu, wiec CSP i blokada sieci
-obowiazuja takze w trakcie pracy - nie ma trybu, w ktorym hartowanie
-z ADR 0008 jest wylaczone. Koszt: po zmianie w rendererze trzeba przebudowac
-i odswiezyc okno.
+z tego samego schematu `app://` co w wydaniu, wiec CSP, blokada sieci, sandbox
+i izolacja kontekstu obowiazuja takze w trakcie pracy - nie ma trybu, w ktorym
+hartowanie z ADR 0008 jest wylaczone. Serwer na `http://localhost` wymagalby
+rozluznienia CSP i otwarcia origin sieciowego, czyli dokladnie dwoch rzeczy,
+ktore ta aplikacja blokuje.
+
+Przeladowanie po zapisie dziala mimo braku serwera. Obserwator plikow siedzi
+w `scripts/dev-reload.cjs` i jest wstrzykiwany do procesu glownego przez
+`NODE_OPTIONS=--require`. Zmiana w rendererze przeladowuje okno, zmiana
+w procesie glownym albo w preloadzie restartuje aplikacje. Zmierzone od zapisu
+pliku do odswiezenia okna: **520 do 630 ms** (z czego 120 ms to celowe
+wygaszanie serii zapisow, reszta to inkrementalny build Angulara).
+
+Czego nie ma: HMR z zachowaniem stanu komponentu. Po zapisie strona
+przeladowuje sie od zera. To swiadomy wybor - identyczny model bezpieczenstwa
+w dev i w wydaniu jest tu wart wiecej niz zachowany stan komponentu.
+
+Obserwatora nie ma w wydaniu i nie jest to kwestia przelacznika w kodzie.
+`scripts/` nie wchodzi na liste `files` w `electron-builder.yml`, wiec w paczce
+go nie ma (sprawdzone: archiwum `app.asar` zawiera tylko `dist`,
+`node_modules` i `package.json`), a Electron odrzuca `NODE_OPTIONS`
+w zapakowanej aplikacji, wiec sama droga wstrzykniecia tam nie istnieje.
 
 ## Polecenia
 

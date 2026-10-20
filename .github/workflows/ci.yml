@@ -97,6 +97,14 @@ jobs:
       - name: Instalacja zaleznosci
         run: npm ci
 
+      # Paczka npm `electron` nie ma skryptu instalacyjnego - binarka jest
+      # pobierana leniwie, przy pierwszym uzyciu. Bez tego kroku katalog
+      # node_modules/electron/dist nie istnieje jeszcze w momencie, w ktorym
+      # nadajemy uprawnienia pomocnikowi sandboxa, a pobieranie wchodzi
+      # w pierwszy test E2E i wyglada jak jego timeout.
+      - name: Pobranie binarki Electrona
+        run: npx electron --version
+
       - name: Kontrola typow
         run: npm run typecheck
 
@@ -134,8 +142,12 @@ jobs:
             ls -l "$helper"
             found=$((found + 1))
           done < <(find node_modules/electron/dist release -name chrome-sandbox -type f 2>/dev/null)
-          if [ "$found" -eq 0 ]; then
-            echo "nie znalazlem zadnej kopii chrome-sandbox - czy paczka probna powstala?"
+          # Obie kopie musza byc obsluzone. Jedna to za malo i konczy sie
+          # polowa padnietych testow, wiec brak drugiej jest bledem, nie
+          # ostrzezeniem.
+          if [ "$found" -lt 2 ]; then
+            echo "oczekiwalem dwoch kopii chrome-sandbox (node_modules i release), mam $found"
+            find node_modules/electron release -maxdepth 3 -name 'chrome-sandbox*' 2>/dev/null || true
             exit 1
           fi
           echo "skonfigurowano kopii pomocnika: $found"
