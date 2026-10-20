@@ -119,17 +119,26 @@ jobs:
       # zapakowany Electron potrzebuje do tego pomocnika z bitem setuid:
       # Ubuntu 24.04 blokuje nieuprzywilejowane przestrzenie nazw przez
       # AppArmor, wiec sciezka namespace jest niedostepna.
-      - name: Pomocnik chrome-sandbox w paczce probnej (Linux)
+      - name: Pomocnik chrome-sandbox (Linux)
         if: runner.os == 'Linux'
         run: |
-          helper="$(find release -maxdepth 2 -name chrome-sandbox -type f -print -quit)"
-          if [ -z "$helper" ]; then
-            echo "nie znalazlem chrome-sandbox w release/ - paczka probna nie powstala?"
+          set -euo pipefail
+          # Dwie kopie, obie potrzebne: testy przeciw dist/ uruchamiaja
+          # Electrona z node_modules, testy przeciw paczce - binarke z release/.
+          # Pominiecie jednej z nich konczy sie tym, ze polowa testow pada na
+          # komunikacie o niepoprawnie skonfigurowanym pomocniku SUID.
+          found=0
+          while IFS= read -r helper; do
+            sudo chown root:root "$helper"
+            sudo chmod 4755 "$helper"
+            ls -l "$helper"
+            found=$((found + 1))
+          done < <(find node_modules/electron/dist release -name chrome-sandbox -type f 2>/dev/null)
+          if [ "$found" -eq 0 ]; then
+            echo "nie znalazlem zadnej kopii chrome-sandbox - czy paczka probna powstala?"
             exit 1
           fi
-          sudo chown root:root "$helper"
-          sudo chmod 4755 "$helper"
-          ls -l "$helper"
+          echo "skonfigurowano kopii pomocnika: $found"
 
       - name: Testy E2E (Linux, pod xvfb)
         if: runner.os == 'Linux'
