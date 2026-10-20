@@ -17,12 +17,30 @@ export interface LaunchedApp {
  * aplikacji nie ma ani jednej linii istniejacej tylko dla testow, a przebieg
  * nie dotyka profilu uzytkownika.
  */
+/**
+ * Jawny limit na sam start zapakowanej binarki, osobny od limitu testu.
+ *
+ * Pierwsze uruchomienie swiezo zbudowanego, niepodpisanego pliku jest
+ * kosztowne: na Windowsie Defender skanuje go w locie, na macOS system
+ * weryfikuje binarke bez podpisu (ADR 0003). Zmierzone lokalnie na macOS:
+ * pierwszy start po spakowaniu potrafi zajac kilkadziesiat sekund, kolejne sa
+ * natychmiastowe. Na runnerze Windows ten sam test raz przeszedl, raz
+ * przekroczyl 180 s, czyli domyslny limit startu.
+ *
+ * Czas startu jest wypisywany, zeby kolejne przebiegi dawaly dane, a nie
+ * domysly - jesli okaze sie, ze start trwa stale minuty, przyczyna jest inna
+ * niz skanowanie i trzeba jej szukac dalej, a nie podnosic limit.
+ */
+const PACKAGED_LAUNCH_TIMEOUT_MS = 300_000;
+
 async function launch(args: string[], executablePath?: string): Promise<LaunchedApp> {
   const userDataDir = createTempTree('acme-userdata-');
+  const startedAt = Date.now();
 
   const app = await electron.launch({
     args: [...args, `--user-data-dir=${userDataDir}`],
     cwd: process.cwd(),
+    ...(executablePath === undefined ? {} : { timeout: PACKAGED_LAUNCH_TIMEOUT_MS }),
     // Bez tego Playwright sam dokłada `--no-sandbox` do argumentow Electrona,
     // czyli test hartowania jechalby z wylaczonym sandboxem systemowym
     // i milczalby o tym. Na Linuksie wymaga to pomocnika chrome-sandbox
@@ -34,6 +52,10 @@ async function launch(args: string[], executablePath?: string): Promise<Launched
 
   const page = await app.firstWindow();
   await page.waitForSelector('[data-testid="app-shell"]');
+
+  if (executablePath !== undefined) {
+    process.stdout.write(`[e2e] start zapakowanej aplikacji: ${Date.now() - startedAt} ms\n`);
+  }
 
   return { app, page, userDataDir };
 }

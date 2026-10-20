@@ -36,12 +36,15 @@ test.describe('zapakowana aplikacja', () => {
    * niepodpisane). Kolejne starty sa natychmiastowe. W CI kazdy przebieg jest
    * dokladnie w tym stanie, bo paczka powstaje chwile wczesniej.
    *
+   * Limit testu jest wyzszy niz limit samego startu z tests/e2e/launch.ts,
+   * zeby porazka wskazywala na start, a nie na test.
+   *
    * Swiadomie limit czasu, a nie `retries`: wolniejszy start to opoznienie,
    * nie inny wynik. Powtarzanie testu ukrywaloby prawdziwa porazke, a tego
    * tutaj nie chcemy - ten test jest jedynym dowodem, ze modul natywny laduje
    * sie z app.asar.unpacked.
    */
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
 
   test('startuje z paczki i better-sqlite3 odpowiada z app.asar.unpacked', async () => {
     const { app, page } = await launchPackagedApp(executable as string);
