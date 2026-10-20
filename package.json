@@ -1,0 +1,61 @@
+{
+  "name": "universal-ai-skills-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop manager for AI tool configuration: skills, agents, commands, rules.",
+  "license": "UNLICENSED",
+  "main": "dist/main/index.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build:main": "tsc -p tsconfig.main.json && node scripts/copy-schema.mjs",
+    "build:preload": "node scripts/build-preload.mjs",
+    "build:renderer": "ng build",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "dev": "node scripts/dev.mjs",
+    "rebuild:native": "electron-builder install-app-deps",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
+    "test": "vitest run",
+    "test:boundaries": "node scripts/verify-boundaries.mjs",
+    "test:e2e": "playwright test",
+    "package": "electron-builder --dir",
+    "package:dist": "electron-builder"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3"
+  },
+  "devDependencies": {
+    "@angular/build": "20.3.40",
+    "@angular/cli": "20.3.40",
+    "@angular/common": "20.3.34",
+    "@angular/compiler": "20.3.34",
+    "@angular/compiler-cli": "20.3.34",
+    "@angular/core": "20.3.34",
+    "@angular/platform-browser": "20.3.34",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.19.2",
+    "electron": "44.9.1",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.1",
+    "eslint": "10.13.0",
+    "eslint-plugin-import-x": "4.17.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  },
+  "overrides": {
+    "@angular/build": {
+      "vitest": "5.0.5"
+    }
+  }
+}

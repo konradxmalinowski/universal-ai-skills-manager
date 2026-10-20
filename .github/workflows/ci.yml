@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Bramki niezalezne od systemu. Lint, formatowanie, granice warstw i audyt
+  # zaleznosci daja ten sam wynik na kazdym runnerze, wiec jada raz.
+  quality:
+    name: Lint, typy, granice warstw
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalacja zaleznosci
+        run: npm ci
+
+      - name: Lint i formatowanie
+        run: npm run lint
+
+      - name: Kontrola typow
+        run: npm run typecheck
+
+      # Regula granic warstw, ktorej nikt nie sprawdzil, nie jest regula:
+      # ten krok wstawia celowo zakazany import i wymaga, zeby lint padl.
+      - name: Dowod, ze granice warstw blokuja
+        run: npm run test:boundaries
+
+      - name: Audyt zaleznosci produkcyjnych
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audyt pelnego drzewa (informacyjnie)
+        run: npm audit --audit-level=high || true
+
+  # Ryzyko S7: publiczne repozytorium jest nieodwracalnym kanalem wycieku,
+  # wiec skan idzie po calej historii, nie po samym drzewie roboczym.
+  secrets-scan:
+    name: Skan sekretow (cala historia)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Instalacja gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+
+      - name: Skan historii
+        run: ./gitleaks git . --no-banner --redact --config .gitleaks.toml --exit-code 1 --log-opts="--all --full-history"
+
+  # Macierz czterech celow (ADR 0010). Cztery wpisy, nie trzy, bo
+  # better-sqlite3 jest modulem natywnym, a macOS arm64 i x64 to osobne cele.
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: macos-15
+            target: macos-arm64
+          - os: macos-15-intel
+            target: macos-x64
+          - os: windows-latest
+            target: windows-x64
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalacja zaleznosci
+        run: npm ci
+
+      - name: Kontrola typow
+        run: npm run typecheck
+
+      - name: Testy jednostkowe, kontraktowe i integracyjne
+        run: npm test
+
+      - name: Build aplikacji
+        run: npm run build
+
+      # Paczka probna idzie przed testami E2E swiadomie: dwa testy w
+      # tests/e2e/packaged-app.spec.ts uruchamiaja faktycznie zapakowana
+      # aplikacje i tylko one potwierdzaja, ze modul natywny laduje sie
+      # z app.asar.unpacked. Bez paczki byly by pominiete.
+      - name: Build probny paczki
+        run: npm run package
+
+      - name: Testy E2E (Linux, pod xvfb)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:e2e
+
+      - name: Testy E2E
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
+
+      - name: Raport E2E przy porazce
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.target }}
+          path: playwright-report
+          retention-days: 7
+          if-no-files-found: ignore

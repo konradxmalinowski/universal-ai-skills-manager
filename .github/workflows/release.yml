@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: macos-15
+            target: macos-arm64
+            builder_args: --mac --arm64
+          - os: macos-15-intel
+            target: macos-x64
+            builder_args: --mac --x64
+          - os: windows-latest
+            target: windows-x64
+            builder_args: --win --x64
+          - os: ubuntu-latest
+            target: linux-x64
+            builder_args: --linux --x64
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalacja zaleznosci
+        run: npm ci
+
+      - name: Build aplikacji
+        run: npm run build
+
+      # Wydanie jest niepodpisane swiadomie (ADR 0003): zadnych sekretow,
+      # zadnej notaryzacji, zadnej autoaktualizacji.
+      - name: Instalatory
+        run: npx electron-builder ${{ matrix.builder_args }} --publish never
+
+      - name: Sumy kontrolne
+        run: node scripts/checksums.mjs release release/SHA256SUMS-${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-${{ matrix.target }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/latest*.yml
+            release/SHA256SUMS-${{ matrix.target }}
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: Wydanie na GitHubie
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: downloaded
+          merge-multiple: true
+
+      - name: Scalenie sum kontrolnych
+        run: |
+          cd downloaded
+          cat SHA256SUMS-* | sort -k2 > SHA256SUMS
+          rm -f SHA256SUMS-*
+          cat SHA256SUMS
+
+      - name: Szkic wydania
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --draft \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Wydanie niepodpisane (ADR 0003). Przed instalacja sprawdz plik SHA256SUMS. Instrukcja obejscia ostrzezen Gatekeepera i SmartScreena jest w README." \
+            downloaded/*

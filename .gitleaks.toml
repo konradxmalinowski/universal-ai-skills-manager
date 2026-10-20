@@ -1,0 +1,26 @@
+# Konfiguracja gitleaks. Rozszerza reguly domyslne, nie zastepuje ich.
+#
+# Wylaczone sa wylacznie katalogi, ktorych w repozytorium nigdy nie ma: wyjscie
+# builda, paczki i cache. Powod jest praktyczny: sourcemapy Angulara zawieraja
+# dlugie losowo wygladajace stringi (nazwy InjectionToken), ktore regula
+# generic-api-key uznaje za sekret. Falszywy alarm w tym miejscu jest gorszy niz
+# brak alarmu, bo uczy ignorowac wynik skanu.
+#
+# Zadna sciezka ze zrodlami, konfiguracja ani testami nie jest tu wylaczona.
+# Bramka w CI i tak skanuje historie gitowa (`--log-opts="--all --full-history"`),
+# a w historii tych katalogow nie ma.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Katalogi wyjsciowe, nieobecne w repozytorium"
+paths = [
+  '''^dist/''',
+  '''^release/''',
+  '''^coverage/''',
+  '''^\.angular/''',
+  '''^node_modules/''',
+  '''^playwright-report/''',
+  '''^test-results/''',
+]

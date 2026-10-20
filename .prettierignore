@@ -1,0 +1,7 @@
+dist/
+release/
+coverage/
+.angular/
+docs/
+tests/fixtures/
+package-lock.json

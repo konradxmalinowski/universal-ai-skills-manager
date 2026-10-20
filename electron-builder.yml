@@ -1,0 +1,77 @@
+# Konfiguracja wydania dla czterech celow (ADR 0002, ADR 0010).
+# Wydania w MVP sa niepodpisane swiadomie (ADR 0003): zero sekretow w CI,
+# zero autoaktualizacji, weryfikacja przez SHA256SUMS.
+
+appId: io.github.universal-ai-skills-manager
+productName: Universal AI Skills Manager
+copyright: ''
+
+directories:
+  output: release
+  buildResources: resources
+
+# Do paczki ida tylko artefakty builda i manifest. Angular jest zaleznoscia
+# wylacznie budowania - jego kod ladnie siedzi w bundlu renderera, wiec nie ma
+# po co kopiowac zrodel do aplikacji.
+files:
+  - dist/**/*
+  - package.json
+  - '!**/*.map'
+
+asar: true
+# Modul natywny musi lezec poza archiwum asar, bo `dlopen` nie otworzy pliku
+# .node ze srodka asara (ADR 0007).
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+
+# `better-sqlite3` 13 dostarcza w paczce npm prebuildy N-API dla wszystkich
+# szesciu par system-architektura, ktore nas interesuja. N-API jest stabilne
+# miedzy Node i Electronem, wiec przebudowa jest zbedna, a jej uruchamianie
+# wymagaloby pelnego toolchainu na kazdym runnerze bez zadnego zysku.
+# Gdyby kiedys zabraklo prebuildu dla jakiejs pary, ratunkiem jest
+# `npm run rebuild:native` i powrot do `npmRebuild: true`.
+npmRebuild: false
+buildDependenciesFromSource: false
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # Brak podpisu i brak notaryzacji: ADR 0003. Gatekeeper bedzie ostrzegal,
+  # instrukcja obejscia jest w README.
+  identity: null
+  notarize: false
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup-${arch}.${ext}
+
+linux:
+  category: Development
+  maintainer: universal-ai-skills-manager
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+
+# Autoaktualizacja jest wylaczona (ADR 0003, ARCHITECTURE 14.3), ale pliki
+# latest*.yml generujemy od poczatku, zeby wlaczenie bylo pozniej kwestia
+# konfiguracji, a nie przebudowy wydania.
+publish:
+  - provider: github
+    releaseType: draft

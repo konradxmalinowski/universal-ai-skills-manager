@@ -1,0 +1,30 @@
+* text=auto eol=lf
+
+*.md       text eol=lf
+*.json     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.ts       text eol=lf
+*.js       text eol=lf
+*.mjs      text eol=lf
+*.cjs      text eol=lf
+*.html     text eol=lf
+*.scss     text eol=lf
+*.css      text eol=lf
+*.sql      text eol=lf
+*.toml     text eol=lf
+*.sh       text eol=lf
+*.ps1      text eol=crlf
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+
+# Fixtures sa danymi testowymi: koniec linii jest czescia przypadku testowego
+# (ADR 0016), wiec git nie moze go tlumaczyc.
+tests/fixtures/** -text
+
+*.png      binary
+*.ico      binary
+*.icns     binary
+*.dmg      binary
+*.zip      binary
+*.node     binary
