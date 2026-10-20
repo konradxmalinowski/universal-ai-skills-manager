@@ -1,0 +1,1661 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Universal AI Skills Manager - system projektowy, podgląd</title>
+<meta name="description" content="Podgląd systemu projektowego aplikacji Universal AI Skills Manager: typografia, paleta, komponenty, trzy ekrany i stany.">
+
+<!-- Source Sans 3 pochodzi z Google Fonts. Cabinet Grotesk (Fontshare) i Commit Mono (jsDelivr) są w @font-face poniżej. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script>
+/* Motyw ustawiany przed pierwszym malowaniem, żeby nie było błysku. */
+(function () {
+  try {
+    var t = localStorage.getItem('uaism-theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* localStorage może być zablokowany, wtedy działa prefers-color-scheme */ }
+})();
+</script>
+
+<style>
+/* ==========================================================================
+   Cabinet Grotesk (Indian Type Foundry, Fontshare, licencja ITF Free Font License:
+   darmowy także komercyjnie). Pliki woff2 z cdn.fontshare.com, wagi 500 i 700.
+   Rodzina nie ma wagi 600, więc tytuły mają 700. Sprawdzone narzędziowo:
+   pełny zestaw polskich liter (ą ć ę ł ń ó ś ź ż i wersaliki) jest w obu plikach.
+   UWAGA: adresy plików Fontshare zawierają skróty i mogą się zmienić. Wtedy
+   fallback to Source Sans 3 / system-ui, a status na stronie powie to wprost.
+   Cabinet Grotesk nie ma cyfr tabelarycznych (brak tnum), więc używamy go
+   tylko do pojedynczych liczb, nigdy do kolumn.
+   ========================================================================== */
+@font-face {
+  font-family: "Cabinet Grotesk"; font-style: normal; font-weight: 500; font-display: swap;
+  src: local("Cabinet Grotesk Medium"), local("CabinetGrotesk-Medium"),
+       url("https://cdn.fontshare.com/wf/CKQBK2QBTCDREE7L3MXZ3PPW7LDNJCWU/OTOY7FQFSFOJVZKJWKO2EHUJLOGBDN4Q/4CO2ETY7NITKLUDKMYJ75RHJSPHOJ7XT.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cabinet Grotesk"; font-style: normal; font-weight: 700; font-display: swap;
+  src: local("Cabinet Grotesk Bold"), local("CabinetGrotesk-Bold"),
+       url("https://cdn.fontshare.com/wf/XMXWOHABYLQDJ42L65EFRYNVRY37HQCB/B2O4O6V3JMFM2WDCYQI3A47L5U4THDUL/WN5274VQ3AUBDFP74GB4EC4XYJ3EKVNE.woff2") format("woff2");
+}
+
+/* ==========================================================================
+   Commit Mono
+   Commit Mono NIE jest w Google Fonts. Ładujemy go z jsDelivr jako
+   @fontsource/commit-mono 5.3.0 (wyłącznie podzbiór "latin", bez latin-ext,
+   więc polskie znaki diakrytyczne w monospace spadają do fallbacku).
+   Jeżeli plik się nie wczyta albo nie ma sieci, działa FALLBACK:
+   ui-monospace, SFMono-Regular, Menlo, monospace. To jest fallback, nie Commit Mono.
+   Sekcja 2 strony pokazuje na żywo, który z dwóch przypadków zachodzi.
+   ========================================================================== */
+@font-face {
+  font-family: "Commit Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Commit Mono"), local("CommitMono-Regular"),
+       url("https://cdn.jsdelivr.net/npm/@fontsource/commit-mono@5.3.0/files/commit-mono-latin-400-normal.woff2") format("woff2");
+}
+
+/* ==========================================================================
+   Tokeny. Ciemny jest domyślny. Jasny włącza się przez data-theme="light"
+   albo przez prefers-color-scheme: light, o ile użytkownik nie wybrał
+   ręcznie data-theme="dark".
+
+   Jeden kolor i jego odcienie (cobalt-100 do cobalt-600) plus czerwień.
+   Nic innego nie ma barwy. Intensywność rośnie z wagą konsekwencji:
+   cobalt-300 to akcja, zaznaczenie i fokus; cobalt-200 to najmocniejszy
+   stopień, sygnał "nadpisze istniejący plik"; czerwień znaczy wyłącznie
+   "tego nie cofniesz". Sukces nie ma koloru.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+  --background: #000000;
+  --surface: #0A0A0A;
+  --surface-raised: #141414;
+  --hairline: #262626;
+  --text: #EDEDED;
+  --text-muted: #8A8A8A;
+  --cobalt-100: #D6E0FF;   /* tekst na powierzchni akcentowej */
+  --cobalt-200: #A8BEFF;   /* SYGNAŁ: nadpisze istniejący plik */
+  --cobalt-300: #7F9FFF;   /* baza: akcja, zaznaczenie, fokus, podkreślenie */
+  --cobalt-400: #4F68C4;   /* wyciszony akcent, obramowania aktywne */
+  --cobalt-500: #2A3A6E;   /* powierzchnia akcentowa podniesiona */
+  --cobalt-600: #1B2A5E;   /* wypełnienie powierzchni akcentowej */
+  --accent: var(--cobalt-300);
+  --destructive: #F2705D;  /* wyłącznie: nieodwracalne */
+  --on-accent: #000000;    /* etykieta na wypełnieniu cobalt-300 */
+  --control-border: var(--text-muted); /* granice pól: WCAG 1.4.11 wymaga 3:1, hairline ma mniej */
+
+  --font-display: "Cabinet Grotesk", "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Commit Mono, a gdy się nie wczyta: FALLBACK systemowy */
+  --font-mono: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --radius: 2px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --background: #FFFFFF;
+    --surface: #F7F7F7;
+    --surface-raised: #EDEDED;
+    --hairline: #D4D4D4;
+    --text: #111111;
+    --text-muted: #5A5A5A;
+    --cobalt-100: #0B1550;
+    --cobalt-200: #16268F;
+    --cobalt-300: #2A47C7;
+    --cobalt-400: #6079DB;
+    --cobalt-500: #C9D5FA;
+    --cobalt-600: #DDE5FF;
+    --destructive: #B3261E;
+    --on-accent: #FFFFFF;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #FFFFFF;
+  --surface: #F7F7F7;
+  --surface-raised: #EDEDED;
+  --hairline: #D4D4D4;
+  --text: #111111;
+  --text-muted: #5A5A5A;
+  --cobalt-100: #0B1550;
+  --cobalt-200: #16268F;
+  --cobalt-300: #2A47C7;
+  --cobalt-400: #6079DB;
+  --cobalt-500: #C9D5FA;
+  --cobalt-600: #DDE5FF;
+  --destructive: #B3261E;
+  --on-accent: #FFFFFF;
+}
+
+/* ==========================================================================
+   Baza
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font: 400 14px/20px var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5, p, ul, ol, dl, dd, figure { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+code, kbd, .mono { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-variant-ligatures: none; }
+a { color: inherit; text-decoration-color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tnum { font-variant-numeric: tabular-nums lining-nums; }
+.muted { color: var(--text-muted); }
+.meta { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+
+/* Fokus: pierścień 2 px w cobalt-300, odsunięty o 2 px, a szczelinę wypełnia
+   kolor tła, więc pierścień nie zlewa się z elementem na żadnej powierzchni. */
+:focus-visible {
+  outline: 2px solid var(--cobalt-300);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--background);
+  border-radius: var(--radius);
+}
+
+.skip { position: absolute; left: 8px; top: -64px; z-index: 100; background: var(--surface-raised); padding: 8px 16px; border: 1px solid var(--text); }
+.skip:focus { top: 8px; }
+
+/* ==========================================================================
+   Szkielet strony podglądu
+   ========================================================================== */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: var(--s4);
+  height: 48px; padding: 0 var(--s5);
+  background: var(--background);
+  border-bottom: 1px solid var(--hairline);
+}
+.topbar .name { font-weight: 600; }
+.topbar .sub { color: var(--text-muted); font-size: 12px; }
+.topbar .spacer { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: var(--radius); }
+.seg button {
+  background: transparent; border: 0; height: 28px; padding: 0 12px; cursor: pointer;
+  font-weight: 500; font-size: 12px;
+}
+.seg button + button { border-left: 1px solid var(--control-border); }
+.seg button[aria-pressed="true"] { background: var(--text); color: var(--background); }
+.seg button:focus-visible { border-radius: 0; }
+
+.shell {
+  display: grid; grid-template-columns: 208px minmax(0, 1fr);
+  column-gap: var(--s7);
+  max-width: 1560px; padding: 0 var(--s5);
+}
+.rail { position: sticky; top: 48px; align-self: start; padding: var(--s6) 0; }
+.rail p { margin-bottom: var(--s3); }
+.rail ol { font: 500 18px/28px var(--font-display); }
+.rail li { display: flex; gap: 8px; }
+.rail .n { color: var(--text-muted); min-width: 1.3em; font-variant-numeric: tabular-nums lining-nums; }
+.rail a { text-decoration: none; padding: 2px 0; }
+.rail a[aria-current="true"] {
+  text-decoration: underline; text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px; text-underline-offset: 6px;
+}
+.rail a:hover { text-decoration: underline; text-decoration-color: var(--hairline); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.rail a[aria-current="true"]:hover { text-decoration-color: var(--accent); }
+
+main { min-width: 0; padding-bottom: 96px; }
+.sec { padding: var(--s8) 0 var(--s5); border-top: 1px solid var(--hairline); }
+.sec:first-of-type { border-top: 0; padding-top: var(--s6); }
+.sec-n { font: 500 12px/16px var(--font-sans); color: var(--text-muted); margin-bottom: var(--s2); }
+.sec h2 { font: 700 28px/36px var(--font-display); max-width: 30ch; margin-bottom: var(--s4); }
+.sec .lead { font-size: 16px; line-height: 24px; max-width: 68ch; margin-bottom: var(--s6); }
+.sec h3 { font: 700 20px/28px var(--font-display); margin: var(--s7) 0 var(--s3); }
+.sec h3 .n { color: var(--text-muted); font-weight: 500; }
+.note { color: var(--text-muted); font-size: 12px; line-height: 16px; max-width: 80ch; margin-top: var(--s3); }
+
+/* ---- Nagłówek ---- */
+.hero { padding: var(--s7) 0 var(--s6); }
+.hero .eyebrow { font: 500 12px/16px var(--font-sans); color: var(--text-muted); margin-bottom: var(--s4); }
+.hero h1 { font: 700 clamp(36px, 6vw, 64px)/1.05 var(--font-display); letter-spacing: -0.01em; margin-bottom: var(--s5); }
+.hero .sentence { font: 500 28px/36px var(--font-display); max-width: 26ch; margin-bottom: var(--s5); }
+.hero .axis { font-size: 16px; line-height: 24px; max-width: 62ch; }
+.hero .axis b { font-weight: 600; }
+
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--hairline); margin-top: var(--s6); }
+.three > li { padding: var(--s4) var(--s5) var(--s4) 0; }
+.three > li + li { padding-left: var(--s5); border-left: 1px solid var(--hairline); }
+.three .k { font: 500 12px/16px var(--font-sans); color: var(--text-muted); }
+.three .t { font: 700 20px/28px var(--font-display); margin: 4px 0 var(--s2); }
+.three p { font-size: 14px; }
+.three .demo { margin-top: var(--s3); }
+
+/* ==========================================================================
+   Przyciski, pola, alerty
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 32px; padding: 0 var(--s4);
+  font-weight: 500; font-size: 14px; line-height: 20px; white-space: nowrap;
+  border: 1px solid transparent; border-radius: var(--radius);
+  background: transparent; color: var(--text); cursor: pointer;
+  transition: transform 80ms ease-out;
+}
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.985); }
+.btn.is-pressed { transform: translateY(1px) scale(0.985); }
+.btn--primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn--primary:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+.btn--secondary { border-color: var(--control-border); }
+.btn--secondary:hover:not(:disabled) { background: var(--surface-raised); }
+.btn--ghost { padding: 0 var(--s2); }
+.btn--ghost:hover:not(:disabled) { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.btn--destructive { border-color: var(--destructive); color: var(--destructive); }
+.btn--destructive:hover:not(:disabled) { background: var(--surface-raised); }
+.btn--sm { height: 24px; padding: 0 var(--s2); font-size: 12px; }
+.btn:disabled { color: var(--text-muted); background: transparent; border-color: var(--hairline); cursor: not-allowed; }
+
+.field { display: grid; gap: 4px; margin-bottom: var(--s4); }
+.field label, .field .l { font-weight: 500; }
+.field .help { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.input, .select {
+  height: 32px; padding: 0 var(--s2); width: 100%;
+  background: var(--background); border: 1px solid var(--control-border); border-radius: var(--radius);
+}
+.input::placeholder { color: var(--text-muted); }
+.field--error .input { border-color: var(--text); border-width: 2px; padding: 0 7px; }
+.field .err { font-size: 12px; line-height: 16px; font-weight: 600; border-left: 2px solid var(--text); padding-left: 8px; }
+.check { display: flex; gap: var(--s2); align-items: flex-start; }
+.check input { appearance: none; -webkit-appearance: none; flex: none; width: 16px; height: 16px; margin: 2px 0 0; border: 1px solid var(--control-border); background: var(--background); border-radius: var(--radius); display: grid; place-content: center; cursor: pointer; }
+.check input[type="radio"] { border-radius: 50%; }
+.check input:checked { background: var(--accent); border-color: var(--accent); }
+.check input[type="checkbox"]:checked::after { content: ""; width: 4px; height: 8px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(40deg) translate(-1px, -1px); }
+.check input[type="radio"]:checked::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--on-accent); }
+.fieldset { border: 0; padding: 0; margin: 0 0 var(--s4); display: grid; gap: var(--s2); }
+.fieldset legend { font-weight: 500; padding: 0; margin-bottom: 4px; }
+
+.alert {
+  --c: var(--text);
+  background: var(--surface); border: 1px solid var(--hairline); border-left: 2px solid var(--c);
+  padding: var(--s3) var(--s4); display: grid; gap: 4px;
+}
+.alert .a-h { color: var(--c); font-weight: 600; }
+.alert p { max-width: 70ch; }
+.alert--success { --c: var(--text-muted); }
+.alert--success .a-h { color: var(--text); }
+.alert--overwrite { --c: var(--cobalt-200); background: var(--cobalt-600); border-color: var(--cobalt-500); border-left-width: 3px; }
+.alert--overwrite .a-h { font-weight: 700; }
+.alert--overwrite p { color: var(--cobalt-100); }
+.alert--destructive { --c: var(--destructive); }
+.alert--ink { border-left-width: 4px; }
+
+.card { background: var(--surface); border: 1px solid var(--hairline); padding: var(--s4); display: grid; gap: var(--s2); align-content: start; }
+.card .c-k { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; }
+.card .c-t { font: 600 16px/24px var(--font-sans); }
+
+kbd {
+  display: inline-block; padding: 0 5px; border: 1px solid var(--control-border); border-radius: var(--radius);
+  font-size: 12px; line-height: 18px; color: var(--text-muted); background: var(--background);
+}
+
+/* ---- Poziom zgodności ---- */
+.lvl { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.segs { display: inline-flex; gap: 2px; }
+.segs i { display: block; width: 6px; height: 10px; border: 1px solid var(--text-muted); }
+.lvl[data-level="full"] .segs i,
+.lvl[data-level="partial"] .segs i:nth-child(-n+3),
+.lvl[data-level="lossy"] .segs i:nth-child(-n+2) { background: var(--text); border-color: var(--text); }
+.lvl[data-level="native"] { color: var(--text-muted); }
+
+/* ---- Znaki korektorskie ---- */
+svg.m { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; flex: none; }
+
+/* ==========================================================================
+   Typografia: specimen
+   ========================================================================== */
+.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--hairline); }
+.role { padding: var(--s5) var(--s5) var(--s5) 0; min-width: 0; }
+.role + .role { padding-left: var(--s5); border-left: 1px solid var(--hairline); }
+.role .r-k { font: 500 12px/16px var(--font-sans); color: var(--text-muted); }
+.role .r-n { font: 700 20px/28px var(--font-display); margin: 4px 0 2px; }
+.role .r-s { font-size: 12px; line-height: 16px; color: var(--text-muted); margin-bottom: var(--s4); }
+.role .spec { border-top: 1px solid var(--hairline); padding: var(--s3) 0; }
+.role .spec > .tag { display: block; font: 400 12px/16px var(--font-mono); color: var(--text-muted); margin-bottom: 4px; }
+.sp-num { font: 700 96px/1 var(--font-display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums lining-nums; }
+.sp-num.zero { color: var(--text-muted); }
+.sp-sentence { font: 500 28px/36px var(--font-display); }
+.sp-title { font: 700 20px/28px var(--font-display); }
+.sp-toc { font: 500 18px/28px var(--font-display); }
+.sp-body16 { font-size: 16px; line-height: 24px; }
+.sp-label { font-weight: 500; }
+.codeblock { background: var(--surface); border: 1px solid var(--hairline); padding: var(--s3); font: 400 13px/20px var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rule-box { margin-top: var(--s5); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); padding: var(--s4); border: 1px solid var(--hairline); background: var(--surface); }
+.rule-box b { font: 700 20px/28px var(--font-display); }
+.fontstatus { font: 400 12px/16px var(--font-mono); color: var(--text-muted); }
+.fontstatus [data-state="ok"]::before { content: "załadowany: "; color: var(--text); }
+.fontstatus [data-state="fallback"]::before { content: "FALLBACK, nie ten font: "; color: var(--text); }
+
+.scale { width: 100%; border-collapse: collapse; margin-top: var(--s5); }
+.scale th, .scale td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hairline); vertical-align: baseline; font-size: 12px; line-height: 16px; }
+.scale th { color: var(--text-muted); font-weight: 500; }
+.scale td:first-child { font-family: var(--font-mono); }
+.scale td.s { font-size: 14px; }
+
+/* ==========================================================================
+   Kolor
+   ========================================================================== */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--s4); }
+.sw { display: grid; gap: 4px; align-content: start; }
+.sw .chipbox { height: 64px; border: 1px solid var(--hairline); background: var(--c); }
+.sw code { font-size: 12px; line-height: 16px; }
+.sw .u { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.sw .hx { display: flex; gap: 12px; font: 400 12px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
+.sw .hx span { color: var(--text-muted); }
+
+.semantic { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); margin-top: var(--s6); }
+.semantic > div { padding: var(--s4); border: 1px solid var(--hairline); background: var(--surface); display: grid; gap: var(--s2); align-content: start; }
+.semantic h4 { font: 700 20px/28px var(--font-display); }
+.semantic .only { font-weight: 600; }
+.semantic ul { display: grid; gap: 4px; }
+.semantic li { padding-left: 16px; position: relative; font-size: 14px; }
+.semantic li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; border-top: 1px solid var(--text-muted); }
+.ex-row { display: flex; align-items: center; gap: var(--s3); min-height: 40px; padding: 0 var(--s3); border: 1px solid var(--hairline); background: var(--background); }
+.ex-row--overwrite { box-shadow: inset 3px 0 0 var(--cobalt-200); background: var(--cobalt-600); border-color: var(--cobalt-500); }
+.ex-row--destructive { box-shadow: inset 2px 0 0 var(--destructive); }
+.ex-row--overwrite .ef { color: var(--cobalt-200); font-weight: 700; }
+.ex-row--destructive .ef { color: var(--destructive); }
+.ex-row .ef { margin-left: auto; font-size: 12px; font-weight: 500; }
+
+.contrast { width: 100%; border-collapse: collapse; margin-top: var(--s5); font-variant-numeric: tabular-nums lining-nums; }
+.contrast caption { text-align: left; font: 700 20px/28px var(--font-display); padding-bottom: var(--s3); }
+.contrast th, .contrast td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.contrast thead th { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; }
+.contrast tbody th { font-weight: 400; }
+.contrast tr.binding th, .contrast tr.binding td { background: var(--surface); }
+.pair { display: flex; align-items: center; gap: 12px; }
+.pair .chip { display: inline-grid; place-items: center; width: 56px; height: 32px; background: var(--b); color: var(--c); border: 1px solid var(--hairline); font: 600 16px/1 var(--font-sans); }
+.pair .r { font-weight: 600; min-width: 5.2ch; }
+.pair .g { font-size: 12px; color: var(--text-muted); }
+
+/* ==========================================================================
+   Szkielet makiet: trzy części (spis treści, obszar roboczy, panel szczegółu)
+   ========================================================================== */
+.stage-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s5); }
+.stage { --frame-w: 1180px; display: grid; gap: var(--s4); }
+.screen-cap { margin: var(--s7) 0 var(--s3); }
+.screen-cap h3 { margin: 0 0 4px; }
+.screen-cap p { font-size: 14px; color: var(--text-muted); max-width: 80ch; }
+.screen-cap + .app { margin-top: 0; }
+
+.app {
+  container-type: inline-size; container-name: app;
+  width: min(100%, var(--frame-w)); max-width: 100%;
+  border: 1px solid var(--hairline); background: var(--background);
+  transition: width 120ms ease-out;
+}
+.app-bar { display: flex; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--hairline); font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.app-bar .app-name { font-weight: 600; color: var(--text); }
+.app-body { display: grid; grid-template-columns: 168px minmax(0, 1fr) 280px; min-height: 560px; }
+.toc { background: var(--surface); border-right: 1px solid var(--hairline); padding: var(--s5) var(--s4); }
+.toc .toc-h { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; margin-bottom: var(--s3); }
+.toc ol { font: 500 18px/28px var(--font-display); }
+.toc li { display: flex; gap: 8px; padding: 2px 0; }
+.toc .n { color: var(--text-muted); min-width: 1.3em; font-variant-numeric: tabular-nums lining-nums; }
+.toc a, .toc .is-off { text-decoration: none; }
+.toc .is-off { color: var(--text-muted); cursor: default; }
+.toc a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.toc a:not([aria-current]):hover { text-decoration: underline; text-decoration-color: var(--hairline); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.work { padding: var(--s5) var(--s5) var(--s6); min-width: 0; }
+.panel { background: var(--surface); border-left: 1px solid var(--hairline); padding: var(--s5) var(--s4); min-width: 0; display: grid; gap: var(--s3); align-content: start; }
+.panel .p-k { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; }
+.panel .p-t { font: 700 20px/28px var(--font-display); overflow-wrap: anywhere; }
+.panel .p-path { font: 400 12px/16px var(--font-mono); overflow-wrap: anywhere; color: var(--text-muted); }
+.panel dl { display: grid; gap: var(--s2); border-top: 1px solid var(--hairline); padding-top: var(--s3); }
+.panel dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; }
+.panel dt { font-size: 12px; line-height: 20px; color: var(--text-muted); font-weight: 500; }
+.panel dd { font-size: 14px; }
+.panel .p-event { padding: 8px 12px; border-left: 3px solid var(--c); background: var(--background); display: grid; gap: 2px; }
+.panel .p-event b { color: var(--c); font-weight: 600; }
+.panel .p-event--overwrite { --c: var(--cobalt-200); background: var(--cobalt-600); }
+.panel .p-event--overwrite b { font-weight: 700; }
+.panel .p-event--overwrite span { color: var(--cobalt-100); }
+.panel .p-event--destructive { --c: var(--destructive); }
+.panel ul.reasons { display: grid; gap: 6px; border-top: 1px solid var(--hairline); padding-top: var(--s3); font-size: 14px; }
+.panel ul.reasons li { padding-left: 12px; position: relative; }
+.panel ul.reasons li::before { content: ""; position: absolute; left: 0; top: 10px; width: 6px; border-top: 1px solid var(--text-muted); }
+.panel .p-actions { display: flex; flex-wrap: wrap; gap: var(--s2); border-top: 1px solid var(--hairline); padding-top: var(--s3); }
+.panel .keyhint { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+
+.ctx { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; margin-bottom: var(--s3); }
+.sentence { font: 500 28px/36px var(--font-display); max-width: 34ch; }
+.sentence code { font-size: 22px; }
+
+/* ---- Plakat ---- */
+.poster { display: grid; grid-template-columns: 296px minmax(0, 1fr); gap: var(--s6); align-items: start; margin-bottom: var(--s5); }
+.nums { border-top: 1px solid var(--hairline); font-variant-numeric: tabular-nums lining-nums; }
+.num { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: baseline; column-gap: var(--s3); border-bottom: 1px solid var(--hairline); padding: var(--s2) 0 var(--s3); }
+.num b { font: 700 96px/1 var(--font-display); letter-spacing: -0.03em; text-align: right; }
+.num .nl { display: grid; }
+.num .nl .lbl { font-weight: 600; font-size: 16px; line-height: 24px; }
+.num .nl .sub { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.num[data-zero="true"] b, .num[data-zero="true"] .lbl { color: var(--text-muted); }
+.num--over:not([data-zero="true"]) b, .num--over:not([data-zero="true"]) .lbl { color: var(--cobalt-200); }
+.num--del:not([data-zero="true"]) b, .num--del:not([data-zero="true"]) .lbl { color: var(--destructive); }
+.facts { display: grid; gap: 4px; margin-top: var(--s5); max-width: 52ch; border-top: 1px solid var(--hairline); padding-top: var(--s3); }
+.facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
+.facts dt { font-size: 12px; line-height: 20px; color: var(--text-muted); font-weight: 500; }
+.facts dd { font-size: 14px; }
+
+/* ---- Skala intensywności i demo rejestru ---- */
+.ladder { width: 100%; border-collapse: collapse; }
+.ladder th, .ladder td { text-align: left; padding: 12px 16px 12px 0; border-top: 1px solid var(--hairline); vertical-align: middle; }
+.ladder thead th { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; border-top: 0; padding-top: 0; }
+.ladder tbody th { font-weight: 500; width: 24%; }
+.ladder td:nth-child(2) { width: 22%; font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.ladder .ld-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.register-demo { margin-top: var(--s4); max-width: 760px; }
+.register-demo .rd-h { margin-bottom: 8px; }
+.register-demo .reg-row label { cursor: default; }
+
+/* ---- Rejestr ---- */
+.reg-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s2); }
+.reg-h { font: 700 20px/28px var(--font-display); margin-right: auto; }
+.keys { font-size: 12px; line-height: 20px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.keys kbd { font-size: 12px; }
+.reg-cols, .reg-row label { display: grid; grid-template-columns: 24px 16px minmax(0, 1fr) 56px 156px; column-gap: 12px; align-items: center; padding: 0 8px; }
+.reg-cols { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--text-muted); padding-bottom: 4px; }
+.register { border-top: 1px solid var(--hairline); font-variant-numeric: tabular-nums lining-nums; }
+.reg-row { border-bottom: 1px solid var(--hairline); }
+.reg-row label { min-height: 40px; cursor: pointer; position: relative; }
+.reg-row:hover label { background: var(--surface); }
+.reg-row:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface-raised); position: relative; z-index: 1; }
+.reg-row:has(input:focus-visible) label { background: var(--surface-raised); }
+.reg-row--over:has(input:focus-visible) label { background: var(--cobalt-500); }
+.reg-row input:focus-visible { outline: none; box-shadow: none; }
+.reg-row .mark { display: grid; place-items: center; height: 24px; color: var(--text); }
+.reg-row .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reg-row .tool { font-size: 12px; color: var(--text-muted); }
+.reg-row .effect { font-size: 12px; line-height: 16px; font-weight: 500; }
+.reg-row--over label { box-shadow: inset 3px 0 0 var(--cobalt-200); background: var(--cobalt-600); }
+.reg-row--over:hover label { background: var(--cobalt-600); }
+.reg-row--over .mark, .reg-row--over .effect, .reg-row--over .path { color: var(--cobalt-200); }
+.reg-row--over .effect { font-weight: 700; }
+.reg-row--del label { box-shadow: inset 2px 0 0 var(--destructive); }
+.reg-row--del .mark, .reg-row--del .effect { color: var(--destructive); }
+.reg-row.is-skipped .path, .reg-row.is-skipped .mark { color: var(--text-muted); }
+.reg-row.is-skipped .effect { color: var(--text-muted); }
+.reg-row.is-done .effect { color: var(--text); }
+.reg-row.enter { animation: row-in 120ms ease-out both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.reg-row input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; border: 1px solid var(--control-border); background: var(--background); border-radius: var(--radius); display: grid; place-content: center; cursor: pointer; }
+.reg-row input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.reg-row input[type="checkbox"]:checked::after { content: ""; width: 4px; height: 8px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(40deg) translate(-1px, -1px); }
+.reg-row input:disabled { cursor: not-allowed; }
+
+.reg-row .meta-line { display: contents; }
+
+/* ---- Rachunek ---- */
+.ledger { max-width: 560px; margin-top: var(--s5); font-variant-numeric: tabular-nums lining-nums; }
+.ledger .ln { display: flex; align-items: baseline; gap: 8px; min-height: 24px; }
+.ledger .ln .dots { flex: 1; border-bottom: 1px dotted var(--text-muted); transform: translateY(-4px); }
+.ledger .ln b { font-weight: 500; min-width: 3ch; text-align: right; }
+.ledger .ln[data-zero="true"] { color: var(--text-muted); }
+.ledger .ln--over:not([data-zero="true"]) { color: var(--cobalt-200); }
+.ledger .ln--over:not([data-zero="true"]) b { font-weight: 700; }
+.ledger .ln--del:not([data-zero="true"]) { color: var(--destructive); }
+.ledger .total { border-top: 3px double var(--text); margin-top: var(--s2); padding-top: var(--s3); display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+.ledger .total .t-l { font-weight: 600; font-size: 16px; }
+.ledger .total .t-n { font: 700 36px/1 var(--font-display); letter-spacing: -0.01em; }
+.ledger .total .btn { margin-left: auto; }
+.savebar { margin-top: var(--s4); display: grid; gap: var(--s2); max-width: 560px; }
+
+/* ---- Biblioteka ---- */
+.lib-tools { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: end; margin: var(--s5) 0 var(--s3); }
+.lib-tools .field { margin: 0; flex: 1 1 240px; max-width: 360px; }
+.lib { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums lining-nums; }
+.lib th { text-align: left; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--text-muted); padding: 0 8px 4px 0; }
+.lib td { padding: 0 8px 0 0; height: 40px; border-top: 1px solid var(--hairline); vertical-align: middle; }
+.lib tr:last-child td { border-bottom: 1px solid var(--hairline); }
+.lib .name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.lib .name button { background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
+.lib .name .ty { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.lib tbody tr:hover td { background: var(--surface); }
+.lib tbody tr[aria-current="true"] td { background: var(--surface-raised); }
+.lib tbody tr[aria-current="true"] .name button { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lib .st { font-size: 12px; line-height: 16px; }
+.lib-empty { padding: var(--s5) 0; max-width: 56ch; }
+
+/* ---- Diff jak korekta redaktorska ---- */
+.diff { border: 1px solid var(--hairline); background: var(--surface); margin-top: var(--s4); }
+.diff-head { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--hairline); font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.diff-head .mono { color: var(--text); font-size: 12px; }
+.dl { display: grid; grid-template-columns: 36px 36px 28px minmax(0, 1fr); min-height: 24px; font: 400 13px/24px var(--font-mono); font-variant-numeric: tabular-nums; position: relative; }
+.dl .no { color: var(--text-muted); text-align: right; padding-right: 8px; user-select: none; font-size: 12px; }
+.dl .mk { display: grid; place-items: center; color: var(--text); }
+.dl .tx { white-space: pre-wrap; overflow-wrap: anywhere; padding-right: 12px; }
+.dl[data-chg]:focus-visible { background: var(--surface-raised); outline-offset: -2px; z-index: 1; }
+.dl[data-chg]:hover { background: var(--surface-raised); }
+.dl--del .tx { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.dl--add .tx { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.dl--mod .tx del { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.dl--mod .tx ins { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.redacted { display: inline-block; padding: 0 6px; border: 1px solid var(--text-muted); border-radius: var(--radius); color: var(--text-muted); background: var(--background); font-size: 12px; line-height: 18px; }
+.diff-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin-top: var(--s3); font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.diff-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.diff-legend .m { color: var(--text); }
+.strip { border-left: 2px solid var(--c); background: var(--surface); border-top: 1px solid var(--hairline); border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); padding: 8px 12px; margin-top: var(--s4); display: grid; gap: 2px; }
+.strip b { color: var(--c); font-weight: 600; }
+.strip--overwrite { --c: var(--cobalt-200); background: var(--cobalt-600); border-color: var(--cobalt-500); border-left-width: 3px; }
+.strip--overwrite b { font-weight: 700; }
+.strip--overwrite span { color: var(--cobalt-100); }
+
+/* ==========================================================================
+   Stany
+   ========================================================================== */
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--s5); }
+.state { border: 1px solid var(--hairline); background: var(--surface); padding: var(--s5); display: grid; gap: var(--s3); align-content: start; }
+.state .st-k { font-size: 12px; line-height: 16px; color: var(--text-muted); font-weight: 500; }
+.state .st-s { font: 500 22px/30px var(--font-display); }
+.state .st-m { color: var(--text-muted); font-size: 14px; }
+.state .zeros { display: flex; gap: var(--s5); font: 700 56px/1 var(--font-display); letter-spacing: -0.03em; color: var(--text-muted); font-variant-numeric: tabular-nums lining-nums; }
+.state .zeros small { display: block; font: 500 12px/16px var(--font-sans); letter-spacing: 0; margin-top: 4px; }
+.skel { display: grid; gap: 8px; }
+.skel i { display: block; height: 40px; background: var(--surface-raised); border-top: 1px solid var(--hairline); }
+.skel i:nth-child(2) { width: 88%; }
+.skel i:nth-child(3) { width: 72%; }
+.skel i:nth-child(4) { width: 80%; }
+.state .ev { padding: 8px 12px; border-left: 2px solid var(--c); background: var(--background); display: grid; gap: 2px; }
+.state .ev b { color: var(--c); font-weight: 600; }
+.state .ev--success { --c: var(--text-muted); }
+.state .ev--success b { color: var(--text); }
+.state .ev--overwrite { --c: var(--cobalt-200); background: var(--cobalt-600); border-left-width: 3px; }
+.state .ev--overwrite b { font-weight: 700; }
+.state .ev--overwrite span { color: var(--cobalt-100); }
+.state .ev--destructive { --c: var(--destructive); }
+.state .ev--ink { --c: var(--text); border-left-width: 4px; }
+.state .ev--ink b { color: var(--text); }
+
+.focus-demo { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s4); border: 1px solid var(--control-border); border-radius: var(--radius); outline: 2px solid var(--cobalt-300); outline-offset: 2px; box-shadow: 0 0 0 2px var(--background); }
+.kt { width: 100%; border-collapse: collapse; }
+.kt th, .kt td { text-align: left; padding: 8px 16px 8px 0; border-bottom: 1px solid var(--hairline); vertical-align: baseline; }
+.kt thead th { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6); }
+.limits { display: grid; gap: var(--s3); max-width: 76ch; }
+.limits li { padding-left: 20px; position: relative; }
+.limits li::before { content: ""; position: absolute; left: 0; top: 10px; width: 10px; border-top: 1px solid var(--text-muted); }
+
+/* ==========================================================================
+   Responsywność strony
+   ========================================================================== */
+@media (max-width: 1100px) {
+  .shell { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+  .rail { position: static; padding: var(--s5) 0 0; }
+  .rail ol { display: flex; flex-wrap: wrap; gap: 0 var(--s5); font-size: 16px; line-height: 28px; }
+  .roles, .three { grid-template-columns: minmax(0, 1fr); }
+  .role, .role + .role, .three > li, .three > li + li { padding-left: 0; border-left: 0; border-top: 1px solid var(--hairline); }
+  .role:first-child, .three > li:first-child { border-top: 0; }
+  .semantic, .two { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .topbar { padding: 0 16px; }
+  .topbar .sub { display: none; }
+  .shell { padding: 0 16px; }
+  .sec h2 { font-size: 24px; line-height: 32px; }
+  .hero .sentence { font-size: 24px; line-height: 32px; }
+  .contrast thead { display: none; }
+  .contrast tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+  .contrast tbody th { grid-column: 1 / -1; border: 0; padding: 0; }
+  .contrast td { border: 0; padding: 0; }
+  .contrast td::before { content: attr(data-th); display: block; font-size: 12px; line-height: 16px; color: var(--text-muted); }
+  .states { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ==========================================================================
+   Responsywność makiet: reagują na szerokość własnej ramki, nie okna
+   ========================================================================== */
+@container app (max-width: 1000px) {
+  .app-body { grid-template-columns: 168px minmax(0, 1fr); }
+  .panel { grid-column: 2; border-left: 0; border-top: 1px solid var(--hairline); }
+}
+@container app (max-width: 720px) {
+  .app-body { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .toc { border-right: 0; border-bottom: 1px solid var(--hairline); padding: var(--s3) var(--s4); }
+  .toc .toc-h { display: none; }
+  .toc ol { display: flex; flex-wrap: wrap; gap: 0 var(--s4); font-size: 16px; }
+  .panel { grid-column: 1; }
+  .work { padding: var(--s4) var(--s4) var(--s5); }
+  .sentence { font-size: 24px; line-height: 32px; }
+  .poster { grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+  .poster .lead { order: -1; }
+  .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--hairline); }
+  .num { grid-template-columns: minmax(0, 1fr); padding: var(--s2) var(--s3) var(--s3); border-right: 1px solid var(--hairline); }
+  .num:first-child { padding-left: 0; }
+  .num:last-child { border-right: 0; }
+  .num b { font-size: 56px; text-align: left; }
+  .num .nl .sub { display: none; }
+  .facts { display: none; }
+  /* wiersz rejestru w dwóch liniach: ścieżka nad, narzędzie i skutek pod */
+  .reg-cols { display: none; }
+  .reg-row label { grid-template-columns: 24px 16px minmax(0, 1fr); grid-template-areas: "mk ck pa" ". . meta"; row-gap: 0; padding: 8px; min-height: 56px; }
+  .reg-row .mark { grid-area: mk; }
+  .reg-row input { grid-area: ck; }
+  .reg-row .path { grid-area: pa; white-space: normal; overflow-wrap: anywhere; }
+  .reg-row .meta-line { grid-area: meta; display: flex; gap: 12px; }
+  .ledger .total { gap: var(--s3); }
+  .ledger .total .btn { margin-left: 0; width: 100%; }
+  .lib thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .lib tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--hairline); }
+  .lib td { display: block; border: 0 !important; height: auto; padding: 0; background: transparent !important; }
+  .lib td.c-name { grid-column: 1 / -1; }
+  .lib td[data-th]::before { content: attr(data-th); display: block; font-size: 12px; line-height: 16px; color: var(--text-muted); }
+  .lib .lvl { flex-wrap: wrap; gap: 2px 8px; }
+  .dl { grid-template-columns: 28px 28px 24px minmax(0, 1fr); }
+  .dl .no { padding-right: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="m-plus" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10"/></symbol>
+  <symbol id="m-bar" viewBox="0 0 14 14"><path d="M2 7h10"/></symbol>
+  <symbol id="m-arrow" viewBox="0 0 14 14"><path d="M2 7h10M8 3l4 4-4 4"/></symbol>
+  <symbol id="m-swap" viewBox="0 0 14 14"><path d="M2 4.5h10M9 1.5l3 3-3 3M12 9.5H2M5 6.5l-3 3 3 3"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Przejdź do treści</a>
+
+<header class="topbar">
+  <span class="name">Universal AI Skills Manager</span>
+  <span class="sub">Podgląd systemu projektowego</span>
+  <span class="spacer"></span>
+  <div class="seg" role="group" aria-label="Motyw">
+    <button type="button" data-set-theme="dark" aria-pressed="true">Ciemny</button>
+    <button type="button" data-set-theme="light" aria-pressed="false">Jasny</button>
+  </div>
+</header>
+
+<div class="shell">
+<nav class="rail" aria-label="Spis treści podglądu">
+  <p class="meta">Spis treści</p>
+  <ol>
+    <li><span class="n">1.</span><a href="#zasady">Zasady</a></li>
+    <li><span class="n">2.</span><a href="#typografia">Typografia</a></li>
+    <li><span class="n">3.</span><a href="#kolor">Kolor</a></li>
+    <li><span class="n">4.</span><a href="#komponenty">Komponenty</a></li>
+    <li><span class="n">5.</span><a href="#ekrany">Ekrany</a></li>
+    <li><span class="n">6.</span><a href="#stany">Stany</a></li>
+    <li><span class="n">7.</span><a href="#ruch">Ruch i klawiatura</a></li>
+    <li><span class="n">8.</span><a href="#granice">Granice podglądu</a></li>
+  </ol>
+</nav>
+
+<main id="main">
+
+<section class="hero" aria-labelledby="h1">
+  <p class="eyebrow">System projektowy, podgląd z 2026-10-20</p>
+  <h1 id="h1">Universal AI Skills Manager</h1>
+  <p class="sentence">Zanim aplikacja cokolwiek zapisze, mówi, co stanie się z każdym plikiem.</p>
+  <p class="axis"><b>Poważne narzędzie do poważnej roboty.</b> Aplikacja pisze do cudzej konfiguracji, więc cały interfejs służy pewności przed akcją, nie szybkości akcji.</p>
+</section>
+
+<!-- 1 -->
+<section class="sec" id="zasady" aria-labelledby="zasady-h">
+  <p class="sec-n">1. Zasady</p>
+  <h2 id="zasady-h">Trzy decyzje rządzą każdym ekranem.</h2>
+  <p class="lead">Oś produktu zamieniono na trzy zasady pozytywne. Każda ma tu żywy przykład na realnej treści.</p>
+  <ol class="three">
+    <li>
+      <p class="k">Decyzja 1</p>
+      <p class="t">Zdanie zamiast tytułu</p>
+      <p>Każdy ekran otwiera pełne zdanie w stronie czynnej.</p>
+      <p class="demo sp-sentence" style="font-size:22px;line-height:30px">Zapis zmieni 14 plików w 2 narzędziach.</p>
+    </li>
+    <li>
+      <p class="k">Decyzja 2</p>
+      <p class="t">Liczby jako bohaterowie</p>
+      <p>Zmiany, nadpisania i usunięcia są największym elementem ekranu. Zero cichnie.</p>
+      <p class="demo tnum" style="font:700 56px/1 var(--font-display);letter-spacing:-0.03em;display:flex;gap:24px"><span>14</span><span style="color:var(--text-muted)">0</span><span style="color:var(--text-muted)">0</span></p>
+    </li>
+    <li>
+      <p class="k">Decyzja 3</p>
+      <p class="t">Kolor wyłącznie jako informacja</p>
+      <p>Intensywność koloru rośnie z wagą konsekwencji. Czerwień znaczy wyłącznie „tego nie cofniesz”. Sukces nie ma koloru.</p>
+      <p class="demo"><a href="#kolor">Zobacz skalę intensywności</a></p>
+    </li>
+  </ol>
+</section>
+
+<!-- 2 -->
+<section class="sec" id="typografia" aria-labelledby="typo-h">
+  <p class="sec-n">2. Typografia</p>
+  <h2 id="typo-h">Grotesk mówi, sans steruje, mono cytuje plik.</h2>
+  <p class="lead">Nigdy odwrotnie. Wąski zakres wag: regular dla treści, medium dla etykiet i zdania, semibold (w groteska: bold, bo rodzina nie ma 600) dla tytułów. Treść ma 14 px, metadane 12 px, tekst podwyższony 16 px.</p>
+
+  <div class="roles">
+    <div class="role">
+      <p class="r-k">Grotesk, mówi</p>
+      <p class="r-n">Cabinet Grotesk</p>
+      <p class="r-s">Fontshare, darmowy komercyjnie. Zdanie otwierające, tytuły widoków, spis treści, wielkie liczby. Nic więcej.</p>
+      <div class="spec"><span class="tag">sentence 28/36 medium</span><p class="sp-sentence">Zapis zmieni 14 plików w 2 narzędziach.</p></div>
+      <div class="spec"><span class="tag">number 96/96 bold</span><p class="tnum" style="display:flex;gap:24px"><span class="sp-num">14</span><span class="sp-num zero">0</span></p></div>
+      <div class="spec"><span class="tag">title 20/28 bold</span><p class="sp-title">Biblioteka skilli</p></div>
+      <div class="spec"><span class="tag">toc 18/28 medium</span><p class="sp-toc">3. Synchronizacja</p></div>
+    </div>
+    <div class="role">
+      <p class="r-k">Sans, steruje</p>
+      <p class="r-n">Source Sans 3</p>
+      <p class="r-s">Google Fonts. Nawigacja robocza, etykiety, treść, przyciski, kontrolki.</p>
+      <div class="spec"><span class="tag">body-raised 16/24 regular</span><p class="sp-body16">Skill <b style="font-weight:500">frontend-design</b> jest w bibliotece od 12 października i działa w obu narzędziach.</p></div>
+      <div class="spec"><span class="tag">body 14/20 regular</span><p>Aplikacja nie wykonuje importowanych skryptów ani hooków. Traktuje je jako niezaufane dane.</p></div>
+      <div class="spec"><span class="tag">label 14/20 medium</span><p class="sp-label">Narzędzie docelowe</p></div>
+      <div class="spec"><span class="tag">meta 12/16 regular</span><p class="meta">Plan odczytano 14:32:07, 2 narzędzia, 128 plików.</p></div>
+    </div>
+    <div class="role">
+      <p class="r-k">Mono, cytuje plik</p>
+      <p class="r-n">Commit Mono</p>
+      <p class="r-s">Ścieżki, diffy, frontmatter, skróty klawiszowe, wartości przed i po.</p>
+      <div class="spec"><span class="tag">mono 13/20 regular</span><code>~/.claude/skills/frontend-design/SKILL.md</code></div>
+      <div class="spec"><span class="tag">frontmatter</span><div class="codeblock">---
+name: react-best-practices
+description: React and Next.js performance
+model: sonnet
+---</div></div>
+      <div class="spec"><span class="tag">przed i po</span><code>model_reasoning_effort = "low" → "medium"</code></div>
+      <div class="spec"><span class="tag">mono-meta 12/16 regular</span><kbd>j</kbd> <kbd>k</kbd> <kbd>spacja</kbd> <kbd>Enter</kbd></div>
+    </div>
+  </div>
+
+  <div class="rule-box">
+    <b>Status fontów na żywo</b>
+    <p class="fontstatus" id="fontstatus" aria-live="polite">Sprawdzam, co się wczytało...</p>
+    <p class="meta">Cabinet Grotesk ładuje się z cdn.fontshare.com (wagi 500 i 700) i ma pełny zestaw polskich liter, sprawdzony w pliku fontu; nie ma cyfr tabelarycznych, więc służy pojedynczym liczbom, nigdy kolumnom. Commit Mono nie jest w Google Fonts. Strona próbuje go wczytać z jsDelivr (@fontsource/commit-mono 5.3.0, podzbiór latin) albo z fontu zainstalowanego lokalnie. Gdy się nie uda, widzisz fallback ui-monospace i status mówi to wprost. Polskie znaki diakrytyczne zawsze spadają do fallbacku, bo podzbiór latin ich nie zawiera.</p>
+  </div>
+
+  <table class="scale">
+    <caption class="vh">Skala typograficzna</caption>
+    <thead><tr><th>Token</th><th>px / interlinia</th><th>Font</th><th>Waga</th><th>Rola</th></tr></thead>
+    <tbody>
+      <tr><td>number</td><td>96 / 96</td><td>Cabinet Grotesk</td><td>700</td><td>liczby plakatu, szeroko</td></tr>
+      <tr><td>number-compact</td><td>56 / 56</td><td>Cabinet Grotesk</td><td>700</td><td>pas liczb na małym oknie</td></tr>
+      <tr><td>sentence</td><td>28 / 36</td><td>Cabinet Grotesk</td><td>500</td><td>zdanie otwierające ekran</td></tr>
+      <tr><td>title</td><td>20 / 28</td><td>Cabinet Grotesk</td><td>700</td><td>tytuły sekcji i paneli</td></tr>
+      <tr><td>toc</td><td>18 / 28</td><td>Cabinet Grotesk</td><td>500</td><td>numerowany spis treści</td></tr>
+      <tr><td>body-raised</td><td>16 / 24</td><td>Source Sans 3</td><td>400</td><td>tekst podwyższony</td></tr>
+      <tr><td>body</td><td>14 / 20</td><td>Source Sans 3</td><td>400, 500</td><td>treść, etykiety, przyciski</td></tr>
+      <tr><td>meta</td><td>12 / 16</td><td>Source Sans 3</td><td>400, 500</td><td>metadane, nagłówki kolumn</td></tr>
+      <tr><td>mono</td><td>13 / 20</td><td>Commit Mono</td><td>400</td><td>ścieżki, diff, frontmatter</td></tr>
+      <tr><td>mono-meta</td><td>12 / 16</td><td>Commit Mono</td><td>400</td><td>skróty, numery linii</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Mono ma 13 px przy sansie 14 px: Commit Mono ma stałą szerokość znaku, więc przy równych px wygląda na większy.</p>
+</section>
+
+<!-- 3 -->
+<section class="sec" id="kolor" aria-labelledby="kolor-h">
+  <p class="sec-n">3. Kolor</p>
+  <h2 id="kolor-h">Jeden kolor niesie wszystko, a czerwień znaczy tylko „tego nie cofniesz”.</h2>
+  <p class="lead">Czarne tło i neutralne powierzchnie, jeden kobalt w sześciu stopniach i czerwień. Żadnej innej barwy nie ma. Zero gradientów: głębia pochodzi z linii 1 px i z tonu powierzchni, dlatego powierzchnie mają ton, a czysta czerń jest tylko tłem. Tekst nie jest czystą bielą.</p>
+
+  <div class="swatches" id="swatches">
+    <div class="sw" style="--c:var(--background)"><div class="chipbox"></div><code>background</code><span class="u">tło okna</span><div class="hx"><span>C #000000</span><span>J #FFFFFF</span></div></div>
+    <div class="sw" style="--c:var(--surface)"><div class="chipbox"></div><code>surface</code><span class="u">spis treści, panel szczegółu, karty</span><div class="hx"><span>C #0A0A0A</span><span>J #F7F7F7</span></div></div>
+    <div class="sw" style="--c:var(--surface-raised)"><div class="chipbox"></div><code>surface-raised</code><span class="u">wiersz bieżący, najechany</span><div class="hx"><span>C #141414</span><span>J #EDEDED</span></div></div>
+    <div class="sw" style="--c:var(--hairline)"><div class="chipbox"></div><code>hairline</code><span class="u">linie 1 px, separatory</span><div class="hx"><span>C #262626</span><span>J #D4D4D4</span></div></div>
+    <div class="sw" style="--c:var(--text)"><div class="chipbox"></div><code>text</code><span class="u">treść</span><div class="hx"><span>C #EDEDED</span><span>J #111111</span></div></div>
+    <div class="sw" style="--c:var(--text-muted)"><div class="chipbox"></div><code>text-muted</code><span class="u">metadane, wyciszone zero, granice pól</span><div class="hx"><span>C #8A8A8A</span><span>J #5A5A5A</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-100)"><div class="chipbox"></div><code>cobalt-100</code><span class="u">tekst na powierzchni akcentowej</span><div class="hx"><span>C #D6E0FF</span><span>J #0B1550</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-200)"><div class="chipbox"></div><code>cobalt-200</code><span class="u">SYGNAŁ: nadpisze istniejący plik</span><div class="hx"><span>C #A8BEFF</span><span>J #16268F</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-300)"><div class="chipbox"></div><code>cobalt-300</code><span class="u">baza: akcja, zaznaczenie, fokus, podkreślenie dodań</span><div class="hx"><span>C #7F9FFF</span><span>J #2A47C7</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-400)"><div class="chipbox"></div><code>cobalt-400</code><span class="u">wyciszony akcent, obramowania aktywne</span><div class="hx"><span>C #4F68C4</span><span>J #6079DB</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-500)"><div class="chipbox"></div><code>cobalt-500</code><span class="u">powierzchnia akcentowa podniesiona</span><div class="hx"><span>C #2A3A6E</span><span>J #C9D5FA</span></div></div>
+    <div class="sw" style="--c:var(--cobalt-600)"><div class="chipbox"></div><code>cobalt-600</code><span class="u">wypełnienie powierzchni akcentowej</span><div class="hx"><span>C #1B2A5E</span><span>J #DDE5FF</span></div></div>
+    <div class="sw" style="--c:var(--destructive)"><div class="chipbox"></div><code>destructive</code><span class="u">WYŁĄCZNIE: tego nie cofniesz</span><div class="hx"><span>C #F2705D</span><span>J #B3261E</span></div></div>
+    <div class="sw" style="--c:var(--on-accent)"><div class="chipbox"></div><code>on-accent</code><span class="u">etykieta na wypełnieniu cobalt-300</span><div class="hx"><span>C #000000</span><span>J #FFFFFF</span></div></div>
+  </div>
+  <p class="note">C to ciemny (domyślny), J to jasny. W jasnym motywie rampa jest odwrócona rolami, nie numerami: baza akcji jest ciemniejsza, a cobalt-200 (sygnał nadpisania) jest jeszcze ciemniejszy, bo najintensywniejszy stopień musi być tym najbardziej kontrastowym wobec tła w obu motywach.</p>
+
+  <h3>Skala intensywności</h3>
+  <p class="lead" style="margin-bottom:var(--s4)"><b style="font-weight:600">Intensywność koloru rośnie z wagą konsekwencji, a czerwień znaczy wyłącznie „tego nie cofniesz”.</b> Sukces nie ma koloru: nie potrzebuje pilności, a każdy kolor wydany na sukces osłabia sygnał zagrożenia.</p>
+  <table class="ladder">
+    <caption class="vh">Skala intensywności</caption>
+    <thead><tr><th>Waga konsekwencji</th><th>Barwa</th><th>Jak wygląda</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Brak konsekwencji: zapisane i potwierdzone</th><td><code>text</code>, bez koloru</td><td><div class="alert alert--success"><span class="a-h">Zapisano</span><p>14 plików w 2 narzędziach. Weryfikacja odczytem zgodna z planem.</p></div></td></tr>
+      <tr><th scope="row">Wybór: zaznaczenie, akcja, fokus</th><td><code>cobalt-300</code></td><td><span class="ld-row"><label class="check"><input type="checkbox" checked> <span>Zaznaczony wiersz</span></label><button class="btn btn--primary btn--sm" type="button" data-demo-press>Zapisz 14 zmian</button><a href="#kolor">podkreślenie</a></span></td></tr>
+      <tr><th scope="row">Konsekwencja: nadpisze istniejący plik</th><td><code>cobalt-200</code>, słowo „nadpisze”, waga 700</td><td><div class="ex-row ex-row--overwrite"><span class="mark"><svg class="m"><use href="#m-swap"/></svg></span><code>~/.codex/agents/docs-agent.toml</code><span class="ef">Nadpisze niezarządzany</span></div></td></tr>
+      <tr><th scope="row">Nieodwracalne: tego nie cofniesz</th><td><code>destructive</code>, jedyna inna barwa</td><td><div class="ex-row ex-row--destructive"><span class="mark"><svg class="m"><use href="#m-bar"/></svg></span><code>~/.claude/commands/deploy-staging.md</code><span class="ef">Zniknie z dysku</span></div></td></tr>
+    </tbody>
+  </table>
+  <p class="note">Błąd, po którym aplikacja przywróciła stan, jest neutralny: gruby pasek w kolorze tekstu i słowo „Błąd”. Czerwień dostaje wyłącznie błąd, po którym odtworzenie stanu się nie udało. Poziom zgodności nie używa koloru: pokazują go słowo i cztery segmenty.</p>
+
+  <h3>cobalt-200 obok cobalt-300</h3>
+  <p class="lead" style="margin-bottom:var(--s4)">Od tego, czy te dwa stopnie da się odróżnić w jednym rejestrze, zależy, czy sygnał nadpisania w ogóle działa. Różnica jest policzona, a poniżej pokazana w realnym układzie.</p>
+  <table class="contrast" id="distinct">
+    <caption class="vh">Różnica między cobalt-200 a cobalt-300</caption>
+    <thead><tr><th>Miara</th><th>Ciemny</th><th>Jasny</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Współczynnik kontrastu WCAG</th><td data-th="Ciemny">1.38:1</td><td data-th="Jasny">1.65:1</td></tr>
+      <tr><th scope="row">Różnica jasności CIE L*</th><td data-th="Ciemny">10.6</td><td data-th="Jasny">14.1</td></tr>
+      <tr><th scope="row">Różnica barwy CIEDE2000 (ΔE00)</th><td data-th="Ciemny">9.1</td><td data-th="Jasny">11.6</td></tr>
+    </tbody>
+  </table>
+  <div class="register-demo" role="group" aria-label="Przykład: wiersze obok siebie">
+    <p class="rd-h meta">Rejestr, trzy wiersze obok siebie: zaznaczony (cobalt-300), nadpisze (cobalt-200), zniknie (czerwień)</p>
+    <ol class="register">
+      <li class="reg-row"><label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-arrow"/></svg></span><input type="checkbox" checked><code class="path">~/.claude/agents/docs-agent.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Zmiana: opis</span></span></label></li>
+      <li class="reg-row reg-row--over"><label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-swap"/></svg></span><input type="checkbox" checked><code class="path">~/.codex/agents/docs-agent.toml</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nadpisze niezarządzany</span></span></label></li>
+      <li class="reg-row reg-row--del"><label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-bar"/></svg></span><input type="checkbox" checked><code class="path">~/.claude/commands/deploy-staging.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Zniknie z dysku</span></span></label></li>
+    </ol>
+  </div>
+  <p class="note">Ostatnie ograniczenie, które trzeba nazwać wprost: sama barwa cobalt-200 wobec cobalt-300 jest różnicą jasności, nie odcienia, więc nie wolno na niej polegać samodzielnie. Sygnał niosą razem: pasek 3 px, tło cobalt-600, słowo „nadpisze”, waga 700 i znak zamiany w marginesie. Kolor nigdy nie jest jedynym nośnikiem znaczenia.</p>
+
+  <table class="contrast" id="contrast">
+    <caption>Pary tło i tekst z wyliczonym kontrastem</caption>
+    <thead><tr><th>Para (tekst na tle)</th><th>Ciemny</th><th>Jasny</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><code>text</code> na <code>background</code></th><td data-th="Ciemny"><span class="pair" data-fg="#EDEDED" data-bg="#000000"><span class="chip" style="--c:#EDEDED;--b:#000000" aria-hidden="true">Aa</span><span class="r">17.94:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#111111" data-bg="#FFFFFF"><span class="chip" style="--c:#111111;--b:#FFFFFF" aria-hidden="true">Aa</span><span class="r">18.88:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>text</code> na <code>surface</code></th><td data-th="Ciemny"><span class="pair" data-fg="#EDEDED" data-bg="#0A0A0A"><span class="chip" style="--c:#EDEDED;--b:#0A0A0A" aria-hidden="true">Aa</span><span class="r">16.91:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#111111" data-bg="#F7F7F7"><span class="chip" style="--c:#111111;--b:#F7F7F7" aria-hidden="true">Aa</span><span class="r">17.63:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>text</code> na <code>surface-raised</code></th><td data-th="Ciemny"><span class="pair" data-fg="#EDEDED" data-bg="#141414"><span class="chip" style="--c:#EDEDED;--b:#141414" aria-hidden="true">Aa</span><span class="r">15.74:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#111111" data-bg="#EDEDED"><span class="chip" style="--c:#111111;--b:#EDEDED" aria-hidden="true">Aa</span><span class="r">16.13:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>text-muted</code> na <code>background</code></th><td data-th="Ciemny"><span class="pair" data-fg="#8A8A8A" data-bg="#000000"><span class="chip" style="--c:#8A8A8A;--b:#000000" aria-hidden="true">Aa</span><span class="r">6.08:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#5A5A5A" data-bg="#FFFFFF"><span class="chip" style="--c:#5A5A5A;--b:#FFFFFF" aria-hidden="true">Aa</span><span class="r">6.90:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>text-muted</code> na <code>surface</code></th><td data-th="Ciemny"><span class="pair" data-fg="#8A8A8A" data-bg="#0A0A0A"><span class="chip" style="--c:#8A8A8A;--b:#0A0A0A" aria-hidden="true">Aa</span><span class="r">5.73:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#5A5A5A" data-bg="#F7F7F7"><span class="chip" style="--c:#5A5A5A;--b:#F7F7F7" aria-hidden="true">Aa</span><span class="r">6.44:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>text-muted</code> na <code>surface-raised</code></th><td data-th="Ciemny"><span class="pair" data-fg="#8A8A8A" data-bg="#141414"><span class="chip" style="--c:#8A8A8A;--b:#141414" aria-hidden="true">Aa</span><span class="r">5.34:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#5A5A5A" data-bg="#EDEDED"><span class="chip" style="--c:#5A5A5A;--b:#EDEDED" aria-hidden="true">Aa</span><span class="r">5.89:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-300</code> na <code>background</code></th><td data-th="Ciemny"><span class="pair" data-fg="#7F9FFF" data-bg="#000000"><span class="chip" style="--c:#7F9FFF;--b:#000000" aria-hidden="true">Aa</span><span class="r">8.31:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#2A47C7" data-bg="#FFFFFF"><span class="chip" style="--c:#2A47C7;--b:#FFFFFF" aria-hidden="true">Aa</span><span class="r">7.44:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-300</code> na <code>surface</code></th><td data-th="Ciemny"><span class="pair" data-fg="#7F9FFF" data-bg="#0A0A0A"><span class="chip" style="--c:#7F9FFF;--b:#0A0A0A" aria-hidden="true">Aa</span><span class="r">7.83:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#2A47C7" data-bg="#F7F7F7"><span class="chip" style="--c:#2A47C7;--b:#F7F7F7" aria-hidden="true">Aa</span><span class="r">6.94:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-300</code> na <code>surface-raised</code></th><td data-th="Ciemny"><span class="pair" data-fg="#7F9FFF" data-bg="#141414"><span class="chip" style="--c:#7F9FFF;--b:#141414" aria-hidden="true">Aa</span><span class="r">7.29:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#2A47C7" data-bg="#EDEDED"><span class="chip" style="--c:#2A47C7;--b:#EDEDED" aria-hidden="true">Aa</span><span class="r">6.35:1</span><span class="g">AA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>cobalt-200</code> na <code>background</code></th><td data-th="Ciemny"><span class="pair" data-fg="#A8BEFF" data-bg="#000000"><span class="chip" style="--c:#A8BEFF;--b:#000000" aria-hidden="true">Aa</span><span class="r">11.47:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#16268F" data-bg="#FFFFFF"><span class="chip" style="--c:#16268F;--b:#FFFFFF" aria-hidden="true">Aa</span><span class="r">12.30:1</span><span class="g">AAA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>cobalt-200</code> na <code>surface</code></th><td data-th="Ciemny"><span class="pair" data-fg="#A8BEFF" data-bg="#0A0A0A"><span class="chip" style="--c:#A8BEFF;--b:#0A0A0A" aria-hidden="true">Aa</span><span class="r">10.82:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#16268F" data-bg="#F7F7F7"><span class="chip" style="--c:#16268F;--b:#F7F7F7" aria-hidden="true">Aa</span><span class="r">11.48:1</span><span class="g">AAA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>cobalt-200</code> na <code>surface-raised</code></th><td data-th="Ciemny"><span class="pair" data-fg="#A8BEFF" data-bg="#141414"><span class="chip" style="--c:#A8BEFF;--b:#141414" aria-hidden="true">Aa</span><span class="r">10.07:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#16268F" data-bg="#EDEDED"><span class="chip" style="--c:#16268F;--b:#EDEDED" aria-hidden="true">Aa</span><span class="r">10.50:1</span><span class="g">AAA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>cobalt-200</code> na <code>cobalt-600</code></th><td data-th="Ciemny"><span class="pair" data-fg="#A8BEFF" data-bg="#1B2A5E"><span class="chip" style="--c:#A8BEFF;--b:#1B2A5E" aria-hidden="true">Aa</span><span class="r">7.45:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#16268F" data-bg="#DDE5FF"><span class="chip" style="--c:#16268F;--b:#DDE5FF" aria-hidden="true">Aa</span><span class="r">9.79:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-300</code> na <code>cobalt-600</code></th><td data-th="Ciemny"><span class="pair" data-fg="#7F9FFF" data-bg="#1B2A5E"><span class="chip" style="--c:#7F9FFF;--b:#1B2A5E" aria-hidden="true">Aa</span><span class="r">5.40:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#2A47C7" data-bg="#DDE5FF"><span class="chip" style="--c:#2A47C7;--b:#DDE5FF" aria-hidden="true">Aa</span><span class="r">5.92:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-100</code> na <code>cobalt-600</code></th><td data-th="Ciemny"><span class="pair" data-fg="#D6E0FF" data-bg="#1B2A5E"><span class="chip" style="--c:#D6E0FF;--b:#1B2A5E" aria-hidden="true">Aa</span><span class="r">10.37:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#0B1550" data-bg="#DDE5FF"><span class="chip" style="--c:#0B1550;--b:#DDE5FF" aria-hidden="true">Aa</span><span class="r">13.52:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-100</code> na <code>cobalt-500</code></th><td data-th="Ciemny"><span class="pair" data-fg="#D6E0FF" data-bg="#2A3A6E"><span class="chip" style="--c:#D6E0FF;--b:#2A3A6E" aria-hidden="true">Aa</span><span class="r">8.28:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#0B1550" data-bg="#C9D5FA"><span class="chip" style="--c:#0B1550;--b:#C9D5FA" aria-hidden="true">Aa</span><span class="r">11.62:1</span><span class="g">AAA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>destructive</code> na <code>background</code></th><td data-th="Ciemny"><span class="pair" data-fg="#F2705D" data-bg="#000000"><span class="chip" style="--c:#F2705D;--b:#000000" aria-hidden="true">Aa</span><span class="r">7.25:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#B3261E" data-bg="#FFFFFF"><span class="chip" style="--c:#B3261E;--b:#FFFFFF" aria-hidden="true">Aa</span><span class="r">6.54:1</span><span class="g">AA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>destructive</code> na <code>surface</code></th><td data-th="Ciemny"><span class="pair" data-fg="#F2705D" data-bg="#0A0A0A"><span class="chip" style="--c:#F2705D;--b:#0A0A0A" aria-hidden="true">Aa</span><span class="r">6.84:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#B3261E" data-bg="#F7F7F7"><span class="chip" style="--c:#B3261E;--b:#F7F7F7" aria-hidden="true">Aa</span><span class="r">6.10:1</span><span class="g">AA</span></span></td></tr>
+      <tr class="binding"><th scope="row"><code>destructive</code> na <code>surface-raised</code></th><td data-th="Ciemny"><span class="pair" data-fg="#F2705D" data-bg="#141414"><span class="chip" style="--c:#F2705D;--b:#141414" aria-hidden="true">Aa</span><span class="r">6.36:1</span><span class="g">AA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#B3261E" data-bg="#EDEDED"><span class="chip" style="--c:#B3261E;--b:#EDEDED" aria-hidden="true">Aa</span><span class="r">5.58:1</span><span class="g">AA</span></span></td></tr>
+      <tr><th scope="row"><code>on-accent</code> na <code>cobalt-300</code></th><td data-th="Ciemny"><span class="pair" data-fg="#000000" data-bg="#7F9FFF"><span class="chip" style="--c:#000000;--b:#7F9FFF" aria-hidden="true">Aa</span><span class="r">8.31:1</span><span class="g">AAA</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#FFFFFF" data-bg="#2A47C7"><span class="chip" style="--c:#FFFFFF;--b:#2A47C7" aria-hidden="true">Aa</span><span class="r">7.44:1</span><span class="g">AAA</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-400</code> na <code>background</code> (obramowanie)</th><td data-th="Ciemny"><span class="pair" data-fg="#4F68C4" data-bg="#000000"><span class="chip" style="--c:#4F68C4;--b:#000000" aria-hidden="true">▭</span><span class="r">4.11:1</span><span class="g">3:1 ✓</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#6079DB" data-bg="#FFFFFF"><span class="chip" style="--c:#6079DB;--b:#FFFFFF" aria-hidden="true">▭</span><span class="r">4.00:1</span><span class="g">3:1 ✓</span></span></td></tr>
+      <tr><th scope="row"><code>cobalt-400</code> na <code>surface-raised</code> (obramowanie)</th><td data-th="Ciemny"><span class="pair" data-fg="#4F68C4" data-bg="#141414"><span class="chip" style="--c:#4F68C4;--b:#141414" aria-hidden="true">▭</span><span class="r">3.61:1</span><span class="g">3:1 ✓</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#6079DB" data-bg="#EDEDED"><span class="chip" style="--c:#6079DB;--b:#EDEDED" aria-hidden="true">▭</span><span class="r">3.41:1</span><span class="g">3:1 ✓</span></span></td></tr>
+      <tr><th scope="row"><code>text-muted</code> na <code>surface</code> (obramowanie)</th><td data-th="Ciemny"><span class="pair" data-fg="#8A8A8A" data-bg="#0A0A0A"><span class="chip" style="--c:#8A8A8A;--b:#0A0A0A" aria-hidden="true">▭</span><span class="r">5.73:1</span><span class="g">3:1 ✓</span></span></td><td data-th="Jasny"><span class="pair" data-fg="#5A5A5A" data-bg="#F7F7F7"><span class="chip" style="--c:#5A5A5A;--b:#F7F7F7" aria-hidden="true">▭</span><span class="r">6.44:1</span><span class="g">3:1 ✓</span></span></td></tr>
+    </tbody>
+  </table>
+  <p class="note">Wartości policzone wzorem WCAG 2.x (luminancja względna sRGB, (L1+0,05)/(L2+0,05)) skryptem w Node. Strona sprawdza je ponownie w przeglądarce przy ładowaniu. Wiersze z tłem to stopnie sygnałowe: cobalt-200 i czerwień. cobalt-400 nie jest tekstem, tylko obramowaniem, więc liczy się dla niego próg 3:1 (wiersze „obramowanie”). Linia hairline ma niski kontrast i jest wyłącznie separatorem; granice pól używają text-muted.</p>
+</section>
+
+<!-- 4 -->
+<section class="sec" id="komponenty" aria-labelledby="komp-h">
+  <p class="sec-n">4. Komponenty</p>
+  <h2 id="komp-h">Każdy komponent mówi, co zrobi, zanim to zrobi.</h2>
+
+  <h3>Przyciski</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+    <button class="btn btn--primary" type="button" data-demo-press>Zapisz 14 zmian</button>
+    <button class="btn btn--secondary" type="button" data-demo-press>Pomiń plik</button>
+    <button class="btn btn--ghost" type="button" data-demo-press>Zaznacz wszystko</button>
+    <button class="btn btn--destructive" type="button" data-demo-press>Usuń 1 plik z dysku</button>
+    <button class="btn btn--secondary" type="button" disabled>Nic do zapisania</button>
+  </div>
+  <p class="note">Przycisk głównej akcji podpisuje się liczbą. Czerwony kontur jest wyłącznie w potwierdzeniu usunięcia. Naciśnięcie daje docisk 80 ms i powrót. Przyciski w tej sekcji reagują tylko dociskiem, bo nie należą do żadnego przepływu.</p>
+
+  <h3>Karty</h3>
+  <div class="states" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+    <div class="card">
+      <p class="c-k">Skill, zsynchronizowany</p>
+      <p class="c-t">frontend-design</p>
+      <p>Wskazówki do wyrazistego projektu interfejsu, bez domyślnych szablonów.</p>
+      <code class="muted" style="font-size:12px">~/.claude/skills/frontend-design/SKILL.md</code>
+      <p style="display:flex;gap:16px;flex-wrap:wrap"><span class="meta">Claude Code</span><span class="lvl" data-level="full"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Pełna</span></span><span class="meta">Codex</span><span class="lvl" data-level="full"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Pełna</span></span></p>
+    </div>
+    <div class="card">
+      <p class="c-k">Profil</p>
+      <p class="c-t">Frontend</p>
+      <p>6 skilli, 2 agentów, 1 komenda i 1 instrukcja globalna. Prywatne tokeny i konfiguracje środowiskowe są wykluczone.</p>
+      <p class="lvl" data-level="partial"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Częściowa w Codeksie</span></p>
+    </div>
+  </div>
+
+  <h3>Pola formularza</h3>
+  <div class="two">
+    <form onsubmit="return false" novalidate>
+      <div class="field"><label for="f-name">Nazwa elementu</label><input class="input mono" id="f-name" value="frontend-design" autocomplete="off"><span class="help">Musi pasować do nazwy katalogu skilla.</span></div>
+      <div class="field"><label for="f-src">Źródło importu</label>
+        <select class="select" id="f-src"><option>~/.claude/skills</option><option>~/.codex/skills</option><option>Wybrany katalog</option></select></div>
+      <div class="field field--error"><label for="f-err">Nazwa w frontmatterze</label><input class="input mono" id="f-err" value="vercel-react-best-practices" aria-invalid="true" aria-describedby="f-err-m" autocomplete="off"><span class="err" id="f-err-m">Błąd: nazwa różni się od katalogu react-best-practices.</span></div>
+    </form>
+    <form onsubmit="return false">
+      <fieldset class="fieldset"><legend>Tryb materializacji</legend>
+        <label class="check"><input type="radio" name="mat" checked> <span>Kopia pliku</span></label>
+        <label class="check"><input type="radio" name="mat"> <span>Dowiązanie symboliczne<br><span class="help">Windows wymaga uprawnień. Aplikacja powie to przed zapisem.</span></span></label>
+      </fieldset>
+      <label class="check"><input type="checkbox" id="f-del"> <span>Usuwaj z celu elementy, których nie ma w bibliotece<br><span class="help">Domyślnie wyłączone. Włączenie dodaje do planu usunięcia, czyli czerwień.</span></span></label>
+    </form>
+  </div>
+  <p class="note">Błąd pola jest neutralny: gruba ramka i słowo „Błąd” w kolorze tekstu. Czerwień jest zarezerwowana.</p>
+
+  <h3>Alerty</h3>
+  <div style="display:grid;gap:12px;max-width:80ch">
+    <div class="alert alert--success"><span class="a-h">Zapisano</span><p>14 plików w 2 narzędziach. Weryfikacja odczytem zgodna z planem.</p></div>
+    <div class="alert alert--overwrite"><span class="a-h">Nadpisze plik niezarządzany</span><p><code>~/.codex/agents/docs-agent.toml</code> istnieje i nie został utworzony przez aplikację. Kopia trafi do historii przed zapisem.</p></div>
+    <div class="alert alert--destructive"><span class="a-h">Zniknie z dysku</span><p><code>~/.claude/commands/deploy-staging.md</code> zostanie usunięty po zatwierdzeniu polityki usuwania.</p></div>
+    <div class="alert alert--ink"><span class="a-h">Błąd, operacja wycofana</span><p>Weryfikacja <code>config.toml</code> nie przeszła. Pliki są takie jak przed zapisem.</p></div>
+  </div>
+
+  <h3>Poziom zgodności</h3>
+  <p class="lead" style="margin-bottom:var(--s3)">Cztery stopnie z sekcji 4.3 architektury. Każdy ma słowo i liczbę segmentów, więc nie zależy od koloru.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:12px 32px">
+    <span class="lvl" data-level="full"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Pełna</span><span class="vh">4 z 4</span></span>
+    <span class="lvl" data-level="partial"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Częściowa</span><span class="vh">3 z 4</span></span>
+    <span class="lvl" data-level="lossy"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Z ostrzeżeniami</span><span class="vh">2 z 4</span></span>
+    <span class="lvl" data-level="unsupported"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Brak konwersji</span><span class="vh">0 z 4</span></span>
+  </div>
+</section>
+
+
+<!-- 5 -->
+<section class="sec" id="ekrany" aria-labelledby="ekr-h">
+  <p class="sec-n">5. Ekrany</p>
+  <h2 id="ekr-h">Trzy ekrany pokazują system w pracy.</h2>
+  <p class="lead">Ramka ma trzy części: spis treści, obszar roboczy, panel szczegółu. Makiety są żywe: rejestr, diff i biblioteka reagują na klawiaturę i mysz, a układ reaguje na szerokość własnej ramki.</p>
+  <div class="stage-ctl">
+    <span class="meta" id="wl">Szerokość okna makiet</span>
+    <div class="seg" role="group" aria-labelledby="wl" id="widthctl">
+      <button type="button" data-w="360px" aria-pressed="false">360 px</button>
+      <button type="button" data-w="720px" aria-pressed="false">720 px</button>
+      <button type="button" data-w="1180px" aria-pressed="true">Pełna</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+
+  <div class="screen-cap"><h3><span class="n">5a.</span> Centrum synchronizacji, plan gotowy</h3>
+    <p>Plakat z trzema liczbami i rejestrem. Odznacz wiersze, a liczby, zdanie i przycisk przeliczą się na bieżąco. Odznacz wszystko, żeby zobaczyć trzy zera.</p></div>
+  <div class="app" id="screen-sync">
+    <div class="app-bar"><span class="app-name">Universal AI Skills Manager</span><span>Plan odczytano 14:32:07</span></div>
+    <div class="app-body">
+      <nav class="toc" aria-label="Spis treści aplikacji">
+        <p class="toc-h">Spis treści</p>
+        <ol>
+          <li><span class="n">1.</span><a href="#screen-library">Biblioteka</a></li>
+          <li><span class="n">2.</span><span class="is-off" title="Poza zakresem podglądu">Import</span></li>
+          <li><span class="n">3.</span><a href="#screen-sync" aria-current="page">Synchronizacja</a></li>
+          <li><span class="n">4.</span><span class="is-off" title="Poza zakresem podglądu">Historia</span></li>
+        </ol>
+      </nav>
+      <div class="work" id="sync-work">
+        <p class="ctx">3. Synchronizacja</p>
+        <div class="poster">
+          <div class="nums tnum">
+            <p class="num" id="num-all"><b id="n-all">14</b><span class="nl"><span class="lbl">zmian</span><span class="sub">plików w sumie</span></span></p>
+            <p class="num num--over" id="num-over"><b id="n-over">2</b><span class="nl"><span class="lbl">nadpisań</span><span class="sub">plików niezarządzanych</span></span></p>
+            <p class="num num--del" id="num-del"><b id="n-del">1</b><span class="nl"><span class="lbl">usunięć</span><span class="sub">plików zniknie z dysku</span></span></p>
+          </div>
+          <div class="lead">
+            <div aria-live="polite"><h4 class="sentence" id="sync-sentence">Zapis zmieni 14 plików w 2 narzędziach.</h4></div>
+            <dl class="facts">
+              <div><dt>Cele</dt><dd>Claude Code 2.1.303, Codex 0.158.0</dd></div>
+              <div><dt>Kopia zapasowa</dt><dd>powstanie przed pierwszym zapisem</dd></div>
+              <div><dt>Cofnięcie</dt><dd>dostępne w Historii po zapisie</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <div class="reg-tools">
+          <h5 class="reg-h">Rejestr zmian</h5>
+          <button class="btn btn--ghost btn--sm" type="button" id="sel-all">Zaznacz wszystko</button>
+          <button class="btn btn--ghost btn--sm" type="button" id="sel-none">Odznacz wszystko</button>
+        </div>
+        <p class="keys" style="margin-bottom:8px"><span><kbd>j</kbd> <kbd>k</kbd> po rejestrze</span><span><kbd>spacja</kbd> zaznacza</span><span><kbd>Enter</kbd> otwiera diff</span></p>
+        <div class="reg-cols" aria-hidden="true"><span></span><span></span><span>Plik</span><span>Cel</span><span>Skutek</span></div>
+        <ol class="register" id="register" aria-label="Plan zmian">
+
+        <li class="reg-row" data-id="1" data-kind="create" data-tool="Codex" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill katalogowy z frontmatterem. Zgodność pełna.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="0"><span class="vh">Utworzenie: </span><code class="path" title="~/.codex/skills/antislop/SKILL.md">~/.codex/skills/antislop/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="2" data-kind="create" data-tool="Codex" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill katalogowy z frontmatterem. Zgodność pełna.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.codex/skills/antislop-ui/SKILL.md">~/.codex/skills/antislop-ui/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="3" data-kind="create" data-tool="Codex" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill katalogowy z frontmatterem. Zgodność pełna.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.codex/skills/antislop-human/SKILL.md">~/.codex/skills/antislop-human/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="4" data-kind="create" data-tool="Codex" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill katalogowy z frontmatterem. Zgodność pełna.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.codex/skills/frontend-design/SKILL.md">~/.codex/skills/frontend-design/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="5" data-kind="create" data-tool="Claude" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill katalogowy z frontmatterem. Zgodność pełna.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.claude/skills/ui-ux-pro-max/SKILL.md">~/.claude/skills/ui-ux-pro-max/SKILL.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="6" data-kind="create" data-tool="Claude" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Plik pomocniczy skilla, kopiowany razem z elementem. Aplikacja go nie uruchamia.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.claude/skills/ui-ux-pro-max/data/ux.csv">~/.claude/skills/ui-ux-pro-max/data/ux.csv</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="7" data-kind="create" data-tool="Claude" data-effect="Nowy plik" data-owner="Nowy" data-compat="full" data-backup="Nie dotyczy, plik nie istnieje" data-note="Komenda w Claude Code ma zgodność pełną.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.claude/commands/implement-feature.md">~/.claude/commands/implement-feature.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="8" data-kind="create" data-tool="Codex" data-effect="Nowy plik" data-owner="Nowy" data-compat="lossy" data-backup="Nie dotyczy, plik nie istnieje" data-note="Skill płaski bez frontmattera. Adapter dopisze name i description. Nic nie ginie, coś jest dodawane.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-plus"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Utworzenie: </span><code class="path" title="~/.codex/skills/review-checklist/SKILL.md">~/.codex/skills/review-checklist/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nowy plik</span></span></label>
+        </li>
+        <li class="reg-row" data-id="9" data-kind="modify" data-tool="Codex" data-effect="Zmiana: name" data-owner="Zarządzany przez aplikację" data-compat="lossy" data-backup="Tak, przed zapisem" data-note="Codex kluczuje skille po name z frontmattera. Element pojawi się pod inną nazwą niż w Claude Code.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-arrow"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Zmiana: </span><code class="path" title="~/.codex/skills/react-best-practices/SKILL.md">~/.codex/skills/react-best-practices/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Zmiana: name</span></span></label>
+        </li>
+        <li class="reg-row" data-id="10" data-kind="modify" data-tool="Claude" data-effect="Zmiana: opis" data-owner="Zarządzany przez aplikację" data-compat="full" data-backup="Tak, przed zapisem" data-note="Zmienia się jedno pole frontmattera.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-arrow"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Zmiana: </span><code class="path" title="~/.claude/agents/docs-agent.md">~/.claude/agents/docs-agent.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Zmiana: opis</span></span></label>
+        </li>
+        <li class="reg-row" data-id="11" data-kind="modify" data-tool="Codex" data-effect="Dopisze 2 wpisy" data-owner="Blok zarządzany przez aplikację" data-compat="partial" data-backup="Tak, przed zapisem" data-note="Zmienia się tylko blok między markerami aplikacji. Reszta pliku zostaje nietknięta.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-arrow"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Zmiana: </span><code class="path" title="~/.codex/config.toml">~/.codex/config.toml</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Dopisze 2 wpisy</span></span></label>
+        </li>
+        <li class="reg-row reg-row--over" data-id="12" data-kind="over" data-tool="Codex" data-effect="Nadpisze niezarządzany" data-owner="Niezarządzany: aplikacja go nie utworzyła" data-compat="partial" data-backup="Tak, kopia trafi do historii" data-note="Agent ma dwa miejsca docelowe. Pola color i memory nie mają odpowiednika i zostają w snapshocie.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-swap"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Nadpisanie: </span><code class="path" title="~/.codex/agents/docs-agent.toml">~/.codex/agents/docs-agent.toml</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nadpisze niezarządzany</span></span></label>
+        </li>
+        <li class="reg-row reg-row--over" data-id="13" data-kind="over" data-tool="Codex" data-effect="Nadpisze niezarządzany" data-owner="Niezarządzany: aplikacja go nie utworzyła" data-compat="full" data-backup="Tak, kopia trafi do historii" data-note="Plik o tej samej nazwie już istnieje w Codeksie. Zapis zastąpi go wersją z biblioteki.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-swap"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Nadpisanie: </span><code class="path" title="~/.codex/skills/antislop-code/SKILL.md">~/.codex/skills/antislop-code/SKILL.md</code><span class="meta-line"><span class="tool">Codex</span><span class="effect">Nadpisze niezarządzany</span></span></label>
+        </li>
+        <li class="reg-row reg-row--del" data-id="14" data-kind="del" data-tool="Claude" data-effect="Zniknie z dysku" data-owner="Zarządzany, usunięcie po potwierdzeniu polityki" data-compat="full" data-backup="Tak, odtworzenie z historii" data-note="Element usunięty z biblioteki. Polityka usuwania jest włączona i wymaga potwierdzenia.">
+          <label><span class="mark" aria-hidden="true"><svg class="m"><use href="#m-bar"/></svg></span><input type="checkbox" checked tabindex="-1"><span class="vh">Usunięcie: </span><code class="path" title="~/.claude/commands/deploy-staging.md">~/.claude/commands/deploy-staging.md</code><span class="meta-line"><span class="tool">Claude</span><span class="effect">Zniknie z dysku</span></span></label>
+        </li>
+
+        </ol>
+        <div class="ledger" id="ledger" aria-label="Suma planu">
+          <p class="ln" id="l-create"><span>Utworzone</span><span class="dots"></span><b>8</b></p>
+          <p class="ln" id="l-modify"><span>Zmienione</span><span class="dots"></span><b>3</b></p>
+          <p class="ln ln--over" id="l-over"><span>Nadpisane</span><span class="dots"></span><b>2</b></p>
+          <p class="ln ln--del" id="l-del"><span>Usunięte</span><span class="dots"></span><b>1</b></p>
+          <div class="total">
+            <span class="t-l">Razem</span><span class="t-n tnum" id="l-total">14</span>
+            <button class="btn btn--primary" type="button" id="save-btn">Zapisz 14 zmian</button>
+          </div>
+        </div>
+        <div class="savebar" id="savebar" hidden>
+          <div class="alert alert--success" role="status"><span class="a-h">Zapisano</span><p id="save-msg"></p></div>
+          <div><button class="btn btn--secondary btn--sm" type="button" id="reset-btn">Przywróć plan (tylko w podglądzie)</button></div>
+        </div>
+        <p class="note" id="enter-note" role="status"></p>
+      </div>
+      <aside class="panel" id="sync-panel" aria-label="Szczegóły bieżącego pliku"><p class="p-k">Szczegóły pliku</p><p>Do tego panelu trafia bieżący wiersz rejestru.</p></aside>
+    </div>
+  </div>
+
+  <div class="screen-cap" id="diff-cap"><h3><span class="n">5b.</span> Przeglądarka diffów, korekta redaktorska</h3>
+    <p>Tła wierszy są neutralne. Usunięcia są przekreślone i wyciszone, dodania podkreślone kobaltem, zmiana wiersza ma znak w marginesie. Kolor niesie plik, nie linijka.</p></div>
+  <div class="app" id="screen-diff">
+    <div class="app-bar"><span class="app-name">Universal AI Skills Manager</span><span>Plik 12 z 14</span></div>
+    <div class="app-body">
+      <nav class="toc" aria-label="Spis treści aplikacji">
+        <p class="toc-h">Spis treści</p>
+        <ol>
+          <li><span class="n">1.</span><a href="#screen-library">Biblioteka</a></li>
+          <li><span class="n">2.</span><span class="is-off" title="Poza zakresem podglądu">Import</span></li>
+          <li><span class="n">3.</span><a href="#screen-sync" aria-current="page">Synchronizacja</a></li>
+          <li><span class="n">4.</span><span class="is-off" title="Poza zakresem podglądu">Historia</span></li>
+        </ol>
+      </nav>
+      <div class="work">
+        <p class="ctx">3. Synchronizacja, diff</p>
+        <h4 class="sentence">Zapis zmieni 4 linie w <code>docs-agent.toml</code>: jedną poprawi, jedną usunie i dwie doda.</h4>
+        <div class="strip strip--overwrite"><b>Nadpisze plik niezarządzany</b><span>Ten plik istnieje na dysku i nie został utworzony przez aplikację. Kopia trafi do historii przed zapisem.</span></div>
+        <div class="diff" id="diff">
+          <div class="diff-head"><span class="mono">~/.codex/agents/docs-agent.toml</span><span>TOML, linie 1 do 10</span></div>
+          <div class="dl"><span class="no">1</span><span class="no">1</span><span class="mk"></span><span class="tx">name = "docs-agent"</span></div>
+          <div class="dl"><span class="no">2</span><span class="no">2</span><span class="mk"></span><span class="tx">description = "Generates, updates and validates project documentation."</span></div>
+          <div class="dl dl--mod" data-chg tabindex="0"><span class="no">3</span><span class="no">3</span><span class="mk"><span class="vh">zmieniona linia</span><svg class="m" aria-hidden="true"><use href="#m-arrow"/></svg></span><span class="tx">model_reasoning_effort = <del>"low"</del> <ins>"medium"</ins></span></div>
+          <div class="dl"><span class="no">4</span><span class="no">4</span><span class="mk"></span><span class="tx"></span></div>
+          <div class="dl"><span class="no">5</span><span class="no">5</span><span class="mk"></span><span class="tx">developer_instructions = """</span></div>
+          <div class="dl"><span class="no">6</span><span class="no">6</span><span class="mk"></span><span class="tx">Read CLAUDE.md in the project root before changing any docs.</span></div>
+          <div class="dl dl--del" data-chg tabindex="-1"><span class="no">7</span><span class="no"></span><span class="mk"><span class="vh">usunięta linia</span><svg class="m" aria-hidden="true"><use href="#m-bar"/></svg></span><span class="tx">Do not touch README.md unless asked.</span></div>
+          <div class="dl dl--add" data-chg tabindex="-1"><span class="no"></span><span class="no">7</span><span class="mk"><span class="vh">dodana linia</span><svg class="m" aria-hidden="true"><use href="#m-plus"/></svg></span><span class="tx">Update the Structure section of README.md after every change.</span></div>
+          <div class="dl dl--add" data-chg tabindex="-1"><span class="no"></span><span class="no">8</span><span class="mk"><span class="vh">dodana linia</span><svg class="m" aria-hidden="true"><use href="#m-plus"/></svg></span><span class="tx">Keep examples runnable and run them before committing.</span></div>
+          <div class="dl"><span class="no">8</span><span class="no">9</span><span class="mk"></span><span class="tx">Docs API call: Authorization: Bearer <span class="redacted">ukryte: wygląda na token</span></span></div>
+          <div class="dl"><span class="no">9</span><span class="no">10</span><span class="mk"></span><span class="tx">"""</span></div>
+        </div>
+        <div class="diff-legend" aria-label="Legenda znaków">
+          <span><span class="m"><svg class="m"><use href="#m-plus"/></svg></span> dodana, podkreślona kobaltem</span>
+          <span><span class="m"><svg class="m"><use href="#m-bar"/></svg></span> usunięta, przekreślona i wyciszona</span>
+          <span><span class="m"><svg class="m"><use href="#m-arrow"/></svg></span> zmieniona w linii</span>
+          <span><kbd>j</kbd> <kbd>k</kbd> między zmianami</span>
+        </div>
+      </div>
+      <aside class="panel" aria-label="Szczegóły pliku">
+        <p class="p-k">Plik 12 z 14</p>
+        <p class="p-t">docs-agent.toml</p>
+        <p class="p-path">~/.codex/agents/docs-agent.toml</p>
+        <div class="p-event p-event--overwrite"><b>Nadpisze plik niezarządzany</b><span>Zapis zastąpi plik, którego aplikacja nie utworzyła.</span></div>
+        <dl>
+          <div><dt>Zgodność</dt><dd><span class="lvl" data-level="partial"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">Częściowa</span><span class="vh">3 z 4</span></span></dd></div>
+          <div><dt>Cel</dt><dd>Codex</dd></div>
+          <div><dt>Kopia</dt><dd>w historii, przed zapisem</dd></div>
+          <div><dt>Sekrety</dt><dd>1 wartość ukryta w podglądzie</dd></div>
+        </dl>
+        <ul class="reasons">
+          <li><code>model</code> mapuje się na <code>model_reasoning_effort</code> przybliżeniem.</li>
+          <li><code>color</code> i <code>memory</code> nie mają odpowiednika. Zostają w snapshocie i nie trafią do pliku.</li>
+          <li>Agent wymaga też wpisu <code>[agents.docs-agent]</code> w <code>config.toml</code>.</li>
+        </ul>
+        <div class="p-actions">
+          <button class="btn btn--secondary btn--sm" type="button" id="diff-skip" aria-pressed="false">Pomiń ten plik</button>
+          <button class="btn btn--ghost btn--sm" type="button" id="diff-back">Wróć do planu</button>
+        </div>
+        <p class="keyhint" id="diff-msg" role="status"></p>
+      </aside>
+    </div>
+  </div>
+
+  <div class="screen-cap"><h3><span class="n">5c.</span> Biblioteka skilli, z poziomem zgodności</h3>
+    <p>Poziom zgodności jest jawną własnością każdego elementu, widoczną przed eksportem. Filtr i wybór wiersza działają.</p></div>
+  <div class="app" id="screen-library">
+    <div class="app-bar"><span class="app-name">Universal AI Skills Manager</span><span>Biblioteka lokalna</span></div>
+    <div class="app-body">
+      <nav class="toc" aria-label="Spis treści aplikacji">
+        <p class="toc-h">Spis treści</p>
+        <ol>
+          <li><span class="n">1.</span><a href="#screen-library" aria-current="page">Biblioteka</a></li>
+          <li><span class="n">2.</span><span class="is-off" title="Poza zakresem podglądu">Import</span></li>
+          <li><span class="n">3.</span><a href="#screen-sync">Synchronizacja</a></li>
+          <li><span class="n">4.</span><span class="is-off" title="Poza zakresem podglądu">Historia</span></li>
+        </ol>
+      </nav>
+      <div class="work">
+        <p class="ctx">1. Biblioteka</p>
+        <div aria-live="polite"><h4 class="sentence" id="lib-sentence"></h4></div>
+        <div class="lib-tools">
+          <div class="field"><label for="lib-q">Filtruj elementy</label><input class="input" id="lib-q" type="search" placeholder="nazwa, typ, status" autocomplete="off"></div>
+          <p class="keys"><span><kbd>/</kbd> filtr</span><span><kbd>j</kbd> <kbd>k</kbd> po tabeli</span></p>
+        </div>
+        <table class="lib" id="lib" role="table">
+          <thead><tr role="row"><th role="columnheader">Element</th><th role="columnheader">Claude Code</th><th role="columnheader">Codex</th><th role="columnheader">Synchronizacja</th></tr></thead>
+          <tbody id="lib-body"></tbody>
+        </table>
+        <p class="lib-empty" id="lib-empty" hidden>Żaden element nie pasuje do filtra. Wyczyść pole, żeby zobaczyć całą bibliotekę.</p>
+      </div>
+      <aside class="panel" id="lib-panel" aria-label="Szczegóły elementu"></aside>
+    </div>
+  </div>
+
+  </div><!-- /stage -->
+</section>
+
+
+<!-- 6 -->
+<section class="sec" id="stany" aria-labelledby="st-h">
+  <p class="sec-n">6. Stany</p>
+  <h2 id="st-h">Każdy stan operacji na plikach ma swój widok.</h2>
+  <p class="lead">Żaden nie jest pustą plamą. Pusty plan z trzema zerami też ma zdanie, i to zdanie jest jego treścią. Stany są migawkami bez przycisków, bo ich akcje należą do ekranów powyżej. Pusty plan możesz wywołać na żywo w 5a.</p>
+  <div class="states">
+    <div class="state" aria-busy="true">
+      <p class="st-k">Ładowanie</p>
+      <p class="st-s">Czytam stan 2 narzędzi.</p>
+      <div class="skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <p class="st-m">Odczyt <code>~/.claude</code> i <code>~/.codex</code>. Żaden plik nie zostanie zmieniony, dopóki nie zatwierdzisz planu.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Sukces</p>
+      <p class="st-s">Zapisano 14 plików w 2 narzędziach.</p>
+      <div class="ev ev--success"><b>Weryfikacja zgodna</b><span>Odczyt z dysku zgadza się z planem. Operacja nr 0042 jest w Historii.</span></div>
+      <p class="st-m">Kopia zapasowa została zachowana, więc zapis można cofnąć.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Ostrzeżenie</p>
+      <p class="st-s">Zapis nadpisze 2 pliki, których aplikacja nie utworzyła.</p>
+      <div class="ev ev--overwrite"><b>Nadpisze plik niezarządzany</b><span><code>~/.codex/agents/docs-agent.toml</code> i <code>~/.codex/skills/antislop-code/SKILL.md</code></span></div>
+      <p class="st-m">Kopie trafią do historii przed zapisem.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Błąd, wycofany</p>
+      <p class="st-s">Zapis nie powiódł się, a pliki są takie jak przed nim.</p>
+      <div class="ev ev--ink"><b>Błąd weryfikacji</b><span><code>~/.codex/config.toml</code> po zapisie różnił się od planu. Aplikacja przywróciła kopię.</span></div>
+      <p class="st-m">Błąd odwracalny jest neutralny. Czerwień zostaje na wypadek, gdy cofnięcia nie ma.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Błąd, bez cofnięcia</p>
+      <p class="st-s">Zapis nie powiódł się i nie udało się go wycofać.</p>
+      <div class="ev ev--destructive"><b>Cofnięcie niemożliwe</b><span>Nie zapisano kopii <code>~/.codex/skills/antislop-code/SKILL.md</code>. Przywróć plik ręcznie z kopii w Historii.</span></div>
+      <p class="st-m">Jedyny błąd, który dostaje czerwień.</p>
+    </div>
+    <div class="state">
+      <p class="st-k">Pusty plan</p>
+      <p class="zeros tnum" aria-hidden="true"><span>0<small>zmian</small></span><span>0<small>nadpisań</small></span><span>0<small>usunięć</small></span></p>
+      <p class="st-s">Cele są zgodne z biblioteką, więc zapis nie zmieni żadnego pliku.</p>
+      <p class="st-m">Sprawdzono 128 plików w 2 narzędziach o 14:32:07. Zero oznacza, że sprawdzono i nic się nie różni, nie że odczyt się nie udał. Zmień element w bibliotece albo zaimportuj nowy, a plan pojawi się tutaj.</p>
+      <button class="btn btn--secondary" type="button" disabled>Nic do zapisania</button>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="sec" id="ruch" aria-labelledby="ruch-h">
+  <p class="sec-n">7. Ruch i klawiatura</p>
+  <h2 id="ruch-h">Ruch trwa ułamek sekundy, a klawiatura robi wszystko, co mysz.</h2>
+  <div class="two">
+    <div>
+      <table class="kt">
+        <caption class="vh">Ruch</caption>
+        <thead><tr><th>Zdarzenie</th><th>Czas</th></tr></thead>
+        <tbody>
+          <tr><td>Wiersze planu wchodzą jeden po drugim</td><td class="mono">120 ms, odstęp 40 ms</td></tr>
+          <tr><td>Potwierdzenie zapisu: docisk i powrót</td><td class="mono">80 ms</td></tr>
+          <tr><td>Zmiana szerokości ramki</td><td class="mono">120 ms</td></tr>
+          <tr><td>Szkielet ładowania, motyw, fokus</td><td class="mono">bez ruchu</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn btn--secondary btn--sm" type="button" id="replay">Odtwórz wejście planu</button><span class="meta" id="rm-status"></span></p>
+      <p class="note">prefers-reduced-motion jest respektowane bezwarunkowo: bez ruchu wiersze po prostu są.</p>
+    </div>
+    <div>
+      <table class="kt">
+        <caption class="vh">Skróty</caption>
+        <thead><tr><th>Skrót</th><th>Działanie</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>j</kbd> <kbd>k</kbd></td><td>następny i poprzedni wiersz rejestru, tabeli, zmiana w diffie</td></tr>
+          <tr><td><kbd>spacja</kbd></td><td>zaznacza lub odznacza wiersz rejestru</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>otwiera diff bieżącego wiersza</td></tr>
+          <tr><td><kbd>/</kbd></td><td>filtr biblioteki</td></tr>
+          <tr><td><kbd>t</kbd></td><td>zmienia motyw (tylko w tym podglądzie)</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px"><span class="focus-demo">Tak wygląda fokus</span></p>
+      <p class="note">Pierścień 2 px w cobalt-300, odsunięty o 2 px, ze szczeliną w kolorze tła. Przeklikaj stronę klawiszem Tab, żeby zobaczyć go na prawdziwych kontrolkach.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="sec" id="granice" aria-labelledby="gr-h">
+  <p class="sec-n">8. Granice podglądu</p>
+  <h2 id="gr-h">Ten podgląd jest statyczny tam, gdzie tak napisano.</h2>
+  <ul class="limits">
+    <li>Dane w makietach są wymyślone. Ścieżki i nazwy pochodzą z realnych formatów Claude Code i Codeksa, ale nic nie jest czytane z dysku.</li>
+    <li>Enter w rejestrze nie otwiera diffu wybranego pliku. Przewija do jednego przykładowego diffu docs-agent.toml i mówi o tym wprost.</li>
+    <li>Pozycje Import i Historia w spisie treści makiet są tekstem, nie linkami, bo tych ekranów tu nie ma. Biblioteka i Synchronizacja prowadzą do swoich makiet.</li>
+    <li>Zapis w 5a zmienia tylko wygląd rejestru. Przycisk przywracania istnieje wyłącznie w podglądzie.</li>
+    <li>Commit Mono z jsDelivr nie ma polskich znaków diakrytycznych. Aplikacja musi dostarczyć pełny font ze sobą, bo działa lokalnie bez CDN.</li>
+    <li>Motyw jest zapamiętywany w localStorage, o ile przeglądarka na to pozwala.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var root = document.documentElement;
+  var RM = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var LIGHT = window.matchMedia('(prefers-color-scheme: light)');
+
+  function pl(n, one, few, many) {
+    var m10 = n % 10, m100 = n % 100;
+    if (n === 1) return one;
+    if (m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14)) return few;
+    return many;
+  }
+
+  /* ---------- motyw ---------- */
+  function effectiveTheme() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return LIGHT.matches ? 'light' : 'dark';
+  }
+  function syncThemeButtons() {
+    var t = effectiveTheme();
+    $$('[data-set-theme]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set-theme') === t)); });
+  }
+  function setTheme(t) {
+    root.setAttribute('data-theme', t);
+    try { localStorage.setItem('uaism-theme', t); } catch (e) { /* brak localStorage: motyw działa do przeładowania */ }
+    syncThemeButtons();
+  }
+  $$('[data-set-theme]').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.getAttribute('data-set-theme')); }); });
+  if (LIGHT.addEventListener) LIGHT.addEventListener('change', syncThemeButtons);
+  syncThemeButtons();
+
+  /* ---------- docisk przycisków 80 ms ---------- */
+  function press(btn) {
+    if (RM.matches) return;
+    btn.classList.add('is-pressed');
+    setTimeout(function () { btn.classList.remove('is-pressed'); }, 80);
+  }
+  $$('[data-demo-press]').forEach(function (b) { b.addEventListener('click', function () { press(b); }); });
+
+  /* ---------- status fontów ---------- */
+  (function () {
+    var out = $('#fontstatus');
+    var list = [['Cabinet Grotesk', '700 16px "Cabinet Grotesk"'], ['Source Sans 3', '400 14px "Source Sans 3"'], ['Commit Mono', '400 13px "Commit Mono"']];
+    if (!document.fonts || !document.fonts.load) { out.textContent = 'Ta przeglądarka nie udostępnia API fontów, nie sprawdzono.'; return; }
+    Promise.all(list.map(function (f) {
+      return document.fonts.load(f[1], 'a').then(function (r) { return r.length > 0; }, function () { return false; });
+    })).then(function (res) {
+      out.innerHTML = '';
+      list.forEach(function (f, i) {
+        var s = document.createElement('span');
+        s.style.display = 'block';
+        var ok = res[i];
+        s.setAttribute('data-state', ok ? 'ok' : 'fallback');
+        var fb = f[0] === 'Commit Mono' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'fallback systemowy';
+        s.textContent = ok ? f[0] : f[0] + ' nie wczytany, używam ' + fb;
+        out.appendChild(s);
+      });
+    });
+  })();
+
+  /* ---------- spis treści strony, bieżąca sekcja ---------- */
+  (function () {
+    var links = $$('.rail a');
+    var map = {};
+    links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (a) { a.removeAttribute('aria-current'); });
+          var a = map[e.target.id]; if (a) a.setAttribute('aria-current', 'true');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    $$('main .sec').forEach(function (s) { io.observe(s); });
+  })();
+
+  /* ---------- kontrast: sprawdzenie liczb w tabeli ---------- */
+  (function () {
+    function lin(c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+    function lum(h) { var n = parseInt(h.slice(1), 16); return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); }
+    function ratio(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+    var bad = 0;
+    $$('.pair').forEach(function (p) {
+      var r = ratio(p.getAttribute('data-fg'), p.getAttribute('data-bg')).toFixed(2);
+      var shown = $('.r', p).textContent.replace(':1', '').replace(',', '.');
+      if (r !== shown) { bad++; console.error('Kontrast rozjechany:', p.getAttribute('data-fg'), p.getAttribute('data-bg'), 'w tabeli', shown, 'wyliczony', r); $('.r', p).textContent = r + ':1 (!)'; }
+    });
+    window.__contrastMismatches = bad;
+  })();
+
+  /* ---------- szerokość makiet ---------- */
+  (function () {
+    var stage = $('#stage'), ctl = $('#widthctl');
+    $$('button', ctl).forEach(function (b) {
+      b.addEventListener('click', function () {
+        stage.style.setProperty('--frame-w', b.getAttribute('data-w'));
+        $$('button', ctl).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      });
+    });
+  })();
+
+  /* ---------- poziomy zgodności ---------- */
+  var LV = { full: 'Pełna', partial: 'Częściowa', lossy: 'Z ostrzeżeniami', unsupported: 'Brak konwersji', native: 'Natywny' };
+  var LVN = { full: 4, partial: 3, lossy: 2, unsupported: 0, native: 0 };
+  function lvl(l) {
+    if (l === 'native') return '<span class="lvl" data-level="native"><span class="lvl-n">Natywny</span></span>';
+    return '<span class="lvl" data-level="' + l + '"><span class="segs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="lvl-n">' + LV[l] + '</span><span class="vh">' + LVN[l] + ' z 4</span></span>';
+  }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function mdcode(s) { return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>'); }
+
+  /* ---------- 5a: rejestr ---------- */
+  var reg = $('#register'), rows = $$('.reg-row', reg);
+  var syncState = 'plan';
+  var panel = $('#sync-panel');
+
+  function counts() {
+    var c = { create: 0, modify: 0, over: 0, del: 0, total: 0 }, tools = {};
+    rows.forEach(function (li) {
+      if ($('input', li).checked) { c[li.dataset.kind]++; c.total++; tools[li.dataset.tool] = 1; }
+    });
+    c.tools = Object.keys(tools).length;
+    return c;
+  }
+  function setZero(el, n) { el.setAttribute('data-zero', String(n === 0)); }
+  function recalc() {
+    var c = counts();
+    $('#n-all').textContent = c.total; setZero($('#num-all'), c.total);
+    $('#n-over').textContent = c.over; setZero($('#num-over'), c.over);
+    $('#n-del').textContent = c.del; setZero($('#num-del'), c.del);
+    [['create', c.create], ['modify', c.modify], ['over', c.over], ['del', c.del]].forEach(function (p) {
+      var el = $('#l-' + p[0]); $('b', el).textContent = p[1]; setZero(el, p[1]);
+    });
+    $('#l-total').textContent = c.total;
+    var s;
+    if (syncState === 'saved') {
+      s = 'Zapisano ' + c.total + ' ' + pl(c.total, 'plik', 'pliki', 'plików') + ' w ' + c.tools + ' ' + pl(c.tools, 'narzędziu', 'narzędziach', 'narzędziach') + '.';
+    } else if (c.total === 0) {
+      s = 'Zapis nie zmieni żadnego pliku, bo wszystkie wiersze planu są pominięte.';
+    } else {
+      s = 'Zapis zmieni ' + c.total + ' ' + pl(c.total, 'plik', 'pliki', 'plików') + ' w ' + c.tools + ' ' + pl(c.tools, 'narzędziu', 'narzędziach', 'narzędziach');
+      var p = [];
+      if (c.over) p.push('nadpisze ' + c.over + ' ' + pl(c.over, 'plik niezarządzany', 'pliki niezarządzane', 'plików niezarządzanych'));
+      if (c.del) p.push('usunie ' + c.del + ' ' + pl(c.del, 'plik', 'pliki', 'plików') + ' z dysku');
+      if (p.length) s += ', w tym ' + p.join(' i ');
+      s += '.';
+    }
+    $('#sync-sentence').textContent = s;
+    var btn = $('#save-btn');
+    if (syncState === 'saved') { btn.textContent = 'Zapisano'; btn.disabled = true; }
+    else if (c.total === 0) { btn.textContent = 'Nic do zapisania'; btn.disabled = true; btn.className = 'btn btn--secondary'; }
+    else { btn.textContent = 'Zapisz ' + c.total + ' ' + pl(c.total, 'zmianę', 'zmiany', 'zmian'); btn.disabled = false; btn.className = 'btn btn--primary'; }
+    rows.forEach(function (li) {
+      var on = $('input', li).checked, ef = $('.effect', li);
+      li.classList.toggle('is-skipped', !on);
+      li.classList.toggle('is-done', syncState === 'saved' && on);
+      ef.textContent = !on ? 'Pominięty' : (syncState === 'saved' ? 'Zapisano' : li.dataset.effect);
+    });
+    var sk = $('#diff-skip'), r12 = rows[11], skipped = !$('input', r12).checked;
+    sk.textContent = skipped ? 'Dołącz ten plik' : 'Pomiń ten plik';
+    sk.setAttribute('aria-pressed', String(skipped));
+    sk.disabled = syncState === 'saved';
+  }
+
+  var TOOLFULL = { Claude: 'Claude Code', Codex: 'Codex' };
+  function renderSyncPanel(li) {
+    var d = li.dataset, path = $('.path', li).textContent, base = path.split('/').pop();
+    var ev = '';
+    if (d.kind === 'over') ev = '<div class="p-event p-event--overwrite"><b>Nadpisze plik niezarządzany</b><span>Aplikacja go nie utworzyła. Zapis go zastąpi.</span></div>';
+    if (d.kind === 'del') ev = '<div class="p-event p-event--destructive"><b>Zniknie z dysku</b><span>Usunięcie po potwierdzeniu polityki usuwania.</span></div>';
+    panel.innerHTML =
+      '<p class="p-k">Plik ' + d.id + ' z ' + rows.length + '</p>' +
+      '<p class="p-t">' + esc(base) + '</p><p class="p-path">' + esc(path) + '</p>' + ev +
+      '<dl><div><dt>Skutek</dt><dd>' + esc(d.effect) + '</dd></div>' +
+      '<div><dt>Własność</dt><dd>' + esc(d.owner) + '</dd></div>' +
+      '<div><dt>Cel</dt><dd>' + TOOLFULL[d.tool] + '</dd></div>' +
+      '<div><dt>Zgodność</dt><dd>' + lvl(d.compat) + '</dd></div>' +
+      '<div><dt>Kopia</dt><dd>' + esc(d.backup) + '</dd></div></dl>' +
+      '<ul class="reasons"><li>' + esc(d.note) + '</li></ul>' +
+      '<p class="keyhint"><kbd>spacja</kbd> zaznacza, <kbd>Enter</kbd> otwiera diff</p>';
+  }
+
+  var cur = rows[0];
+  function setCurrent(li) {
+    cur = li;
+    rows.forEach(function (r) { $('input', r).tabIndex = r === li ? 0 : -1; });
+    renderSyncPanel(li);
+  }
+  reg.addEventListener('focusin', function (e) { var li = e.target.closest('.reg-row'); if (li && li !== cur) setCurrent(li); });
+  reg.addEventListener('click', function (e) { var li = e.target.closest('.reg-row'); if (li && li !== cur) setCurrent(li); });
+  reg.addEventListener('change', recalc);
+  reg.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var li = e.target.closest('.reg-row'); if (!li) return;
+    var i = rows.indexOf(li);
+    if (e.key === 'j' || e.key === 'k') {
+      var n = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'j' ? 1 : -1)))];
+      $('input', n).tabIndex = 0; $('input', n).focus(); e.preventDefault();
+    } else if (e.key === 'Enter') {
+      e.preventDefault(); openDiff(li);
+    }
+  });
+  $('#sel-all').addEventListener('click', function () { if (syncState === 'saved') return; rows.forEach(function (r) { $('input', r).checked = true; }); recalc(); });
+  $('#sel-none').addEventListener('click', function () { if (syncState === 'saved') return; rows.forEach(function (r) { $('input', r).checked = false; }); recalc(); });
+
+  function openDiff(li) {
+    var base = $('.path', li).textContent.split('/').pop();
+    var msg = 'W aplikacji otworzyłby się diff pliku ' + base + '. Podgląd ma jeden przykładowy diff, docs-agent.toml, i przewija do niego.';
+    $('#enter-note').textContent = msg;
+    $('#diff-msg').textContent = li === rows[11] ? '' : 'Pokazany diff to przykład, nie ' + base + '.';
+    var cap = $('#diff-cap');
+    cap.scrollIntoView({ behavior: RM.matches ? 'auto' : 'smooth', block: 'start' });
+    var first = $('#diff .dl[data-chg][tabindex="0"]');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function playEnter() {
+    if (RM.matches) return;
+    rows.forEach(function (r, i) { r.style.setProperty('--i', Math.min(i, 12)); r.classList.remove('enter'); void r.offsetWidth; r.classList.add('enter'); });
+    setTimeout(function () { rows.forEach(function (r) { r.classList.remove('enter'); }); }, 1200);
+  }
+  $('#replay').addEventListener('click', function () { $('#register').scrollIntoView({ block: 'center', behavior: RM.matches ? 'auto' : 'smooth' }); setTimeout(playEnter, RM.matches ? 0 : 350); });
+  if ('IntersectionObserver' in window) {
+    var once = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { playEnter(); once.disconnect(); } }, { threshold: 0.15 });
+    once.observe(reg);
+  }
+  function rmText() { $('#rm-status').textContent = RM.matches ? 'Twój system prosi o brak ruchu: wiersze pojawiają się bez animacji.' : 'Twój system pozwala na ruch.'; }
+  rmText(); if (RM.addEventListener) RM.addEventListener('change', rmText);
+
+  $('#save-btn').addEventListener('click', function () {
+    var b = this; if (b.disabled) return;
+    press(b);
+    setTimeout(function () {
+      var c = counts();
+      syncState = 'saved';
+      rows.forEach(function (r) { $('input', r).disabled = true; });
+      $('#save-msg').textContent = 'Weryfikacja odczytem zgodna z planem. Kopia zapasowa jest w Historii, operacja nr 0042. To tylko podgląd: żaden plik nie został zmieniony.';
+      $('#savebar').hidden = false;
+      recalc();
+    }, RM.matches ? 0 : 80);
+  });
+  $('#reset-btn').addEventListener('click', function () {
+    syncState = 'plan';
+    rows.forEach(function (r) { $('input', r).disabled = false; $('input', r).checked = true; });
+    $('#savebar').hidden = true;
+    recalc(); playEnter();
+    $('input', cur).focus();
+  });
+
+  /* ---------- 5b: diff ---------- */
+  (function () {
+    var changes = $$('#diff .dl[data-chg]');
+    $('#diff').addEventListener('keydown', function (e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      var i = changes.indexOf(e.target.closest('.dl[data-chg]'));
+      if (i < 0) return;
+      if (e.key === 'j' || e.key === 'k') {
+        var n = changes[Math.max(0, Math.min(changes.length - 1, i + (e.key === 'j' ? 1 : -1)))];
+        changes.forEach(function (c) { c.tabIndex = c === n ? 0 : -1; });
+        n.focus(); e.preventDefault();
+      }
+    });
+    $('#diff').addEventListener('focusin', function (e) {
+      var c = e.target.closest('.dl[data-chg]'); if (!c) return;
+      changes.forEach(function (x) { x.tabIndex = x === c ? 0 : -1; });
+    });
+    $('#diff-skip').addEventListener('click', function () {
+      var cb = $('input', rows[11]); if (cb.disabled) return;
+      cb.checked = !cb.checked; recalc();
+      $('#diff-msg').textContent = cb.checked ? 'Plik wrócił do planu.' : 'Plik pominięty, plan w 5a przeliczył się.';
+    });
+    $('#diff-back').addEventListener('click', function () {
+      $('#screen-sync').scrollIntoView({ behavior: RM.matches ? 'auto' : 'smooth', block: 'start' });
+      $('input', cur).focus({ preventScroll: true });
+    });
+  })();
+
+  /* ---------- 5c: biblioteka ---------- */
+  var FM = {
+    'frontend-design': 'name: frontend-design\ndescription: Guidance for distinctive, intentional visual design',
+    'react-best-practices': 'name: vercel-react-best-practices\ndescription: React and Next.js performance optimization guidelines',
+    'ui-ux-pro-max': 'name: ui-ux-pro-max\ndescription: UI/UX design intelligence for web, mobile, desktop',
+    'antislop': 'name: antislop\ndescription: Rules for AI coding agents. The core filter.'
+  };
+  function agentNotes(n) { return ['Dwa miejsca docelowe: `agents/' + n + '.toml` i wpis `[agents.' + n + ']` w `config.toml`.', '`model` mapuje się na `model_reasoning_effort` przybliżeniem.', '`color` i `memory` nie mają odpowiednika i zostają w snapshocie.']; }
+  var LIB = [
+    { n: 'frontend-design', t: 'Skill', cl: 'full', cx: 'full', sy: 'Zsynchronizowany', p: '~/.claude/skills/frontend-design/SKILL.md', notes: ['Nazwa we frontmatterze zgadza się z nazwą katalogu.', 'Pliki pomocnicze są kopiowane razem z elementem.'] },
+    { n: 'react-best-practices', t: 'Skill', cl: 'full', cx: 'lossy', sy: 'Zmieniony w narzędziu', p: '~/.claude/skills/react-best-practices/SKILL.md', notes: ['Codex kluczuje skille po `name` z frontmattera i pokaże ten element jako `vercel-react-best-practices`.', 'Claude Code kluczuje po nazwie katalogu: `react-best-practices`. Rozstrzygnięcie per narzędzie, ADR 0026.'] },
+    { n: 'ui-ux-pro-max', t: 'Skill', cl: 'full', cx: 'full', sy: 'Zsynchronizowany', p: '~/.claude/skills/ui-ux-pro-max/SKILL.md', notes: ['Zawiera skrypty pomocnicze. Aplikacja kopiuje je, nie uruchamia.'] },
+    { n: 'antislop', t: 'Skill', cl: 'full', cx: 'full', sy: 'Tylko w bibliotece', p: '~/.claude/skills/antislop/SKILL.md', notes: ['Jeszcze nie wyeksportowany do żadnego narzędzia.'] },
+    { n: 'review-checklist', t: 'Skill płaski', cl: 'full', cx: 'lossy', sy: 'Tylko w bibliotece', p: '~/.claude/skills/review-checklist.md', notes: ['Plik nie ma frontmattera, a Codex go wymaga. Adapter dopisze `name` i `description`.', 'Nic nie ginie, ale coś jest dodawane.'], added: 'name, description' },
+    { n: 'frontend-agent', t: 'Agent', cl: 'full', cx: 'partial', sy: 'Zsynchronizowany', p: '~/.claude/agents/frontend-agent.md', notes: agentNotes('frontend-agent'), lost: 'color, memory' },
+    { n: 'docs-agent', t: 'Agent', cl: 'full', cx: 'partial', sy: 'Zmieniony w bibliotece', p: '~/.claude/agents/docs-agent.md', notes: agentNotes('docs-agent'), lost: 'color, memory' },
+    { n: 'devsecops-agent', t: 'Agent', cl: 'full', cx: 'partial', sy: 'Zmieniony w narzędziu', p: '~/.claude/agents/devsecops-agent.md', notes: agentNotes('devsecops-agent'), lost: 'color, memory' },
+    { n: 'implement-feature', t: 'Komenda', cl: 'full', cx: 'lossy', sy: 'Zsynchronizowany', p: '~/.claude/commands/implement-feature.md', notes: ['Codex nie ma pojęcia komendy. Element trafi jako skill (ADR 0021).', 'Ginie wywołanie przez `/implement-feature`.'], lost: 'wywołanie przez /nazwa' },
+    { n: 'SessionStart', t: 'Hook', cl: 'full', cx: 'partial', sy: 'Zsynchronizowany', p: '~/.claude/settings.json', notes: ['Codex czyta tylko `hooks.<Zdarzenie>` i po cichu pomija nieznane zdarzenia.', '`SessionStart` jest na liście zdarzeń znanych Codeksowi, więc nie ma ostrzeżenia.'] },
+    { n: 'github', t: 'Serwer MCP', cl: 'native', cx: 'unsupported', sy: 'Tylko w narzędziu', p: '~/.claude.json', notes: ['Decyzja polityczna, nie techniczna (ADR 0020). Codex nie ma MCP per projekt, więc nie da się przenieść zakresu.', 'Żaden plik nie powstanie, a plan eksportu pokaże powód.'] },
+    { n: 'Instrukcja globalna', t: 'Instrukcja', cl: 'partial', cx: 'partial', sy: 'Zsynchronizowany', p: '~/.claude/CLAUDE.md', notes: ['Jeden plik na narzędzie (`CLAUDE.md`, `AGENTS.md`), więc aplikacja zarządza blokiem między markerami, nie plikiem.', 'Treść poza blokiem nie jest eksportowana ani kontrolowana (ADR 0025).'] }
+  ];
+  var libBody = $('#lib-body'), libPanel = $('#lib-panel'), libQ = $('#lib-q'), libCur = LIB[0];
+  LIB.forEach(function (it, i) {
+    var tr = document.createElement('tr'); tr.setAttribute('role', 'row'); tr.dataset.i = i;
+    tr.dataset.text = (it.n + ' ' + it.t + ' ' + it.sy).toLowerCase();
+    tr.innerHTML =
+      '<td role="cell" class="c-name"><span class="name"><button type="button" tabindex="-1">' + esc(it.n) + '</button><span class="ty">' + esc(it.t) + '</span></span></td>' +
+      '<td role="cell" data-th="Claude Code">' + lvl(it.cl) + '</td>' +
+      '<td role="cell" data-th="Codex">' + lvl(it.cx) + '</td>' +
+      '<td role="cell" data-th="Synchronizacja" class="st">' + esc(it.sy) + '</td>';
+    libBody.appendChild(tr);
+  });
+  function libRows() { return $$('tr', libBody).filter(function (r) { return !r.hidden; }); }
+  function renderLibPanel(it) {
+    var fm = FM[it.n];
+    var h = '<p class="p-k">' + esc(it.t) + '</p><p class="p-t">' + esc(it.n) + '</p><p class="p-path">' + esc(it.p) + '</p>';
+    if (fm) h += '<div class="codeblock">---\n' + esc(fm) + '\n---</div>';
+    h += '<dl><div><dt>Claude Code</dt><dd>' + lvl(it.cl) + '</dd></div><div><dt>Codex</dt><dd>' + lvl(it.cx) + '</dd></div><div><dt>Synchr.</dt><dd>' + esc(it.sy) + '</dd></div>';
+    if (it.lost) h += '<div><dt>Ginie</dt><dd><code>' + esc(it.lost) + '</code></dd></div>';
+    if (it.added) h += '<div><dt>Dopisze</dt><dd><code>' + esc(it.added) + '</code></dd></div>';
+    h += '</dl><ul class="reasons">' + it.notes.map(function (n) { return '<li>' + mdcode(n) + '</li>'; }).join('') + '</ul>';
+    libPanel.innerHTML = h;
+  }
+  function libSelect(tr) {
+    $$('tr', libBody).forEach(function (r) { r.removeAttribute('aria-current'); $('button', r).tabIndex = -1; });
+    tr.setAttribute('aria-current', 'true'); $('button', tr).tabIndex = 0;
+    libCur = LIB[+tr.dataset.i]; renderLibPanel(libCur);
+  }
+  function libSentence() {
+    var v = libRows(), n = v.length, m = v.filter(function (r) { return LIB[+r.dataset.i].cx !== 'full'; }).length, s;
+    if (n === 0) s = 'Biblioteka nie ma elementu pasującego do tego filtra.';
+    else if (m === 0) s = 'Biblioteka pokazuje ' + n + ' ' + pl(n, 'element', 'elementy', 'elementów') + ', a wszystkie przeniosą się do Codeksa w całości.';
+    else s = 'Biblioteka pokazuje ' + n + ' ' + pl(n, 'element', 'elementy', 'elementów') + ', a ' + m + ' z nich nie przeniesie się do Codeksa w całości.';
+    $('#lib-sentence').textContent = s;
+    $('#lib-empty').hidden = n !== 0;
+    $('#lib').hidden = n === 0;
+  }
+  libBody.addEventListener('click', function (e) { var tr = e.target.closest('tr'); if (tr) libSelect(tr); });
+  libBody.addEventListener('focusin', function (e) { var tr = e.target.closest('tr'); if (tr && tr.getAttribute('aria-current') !== 'true') libSelect(tr); });
+  libBody.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key !== 'j' && e.key !== 'k') return;
+    var v = libRows(), i = v.indexOf(e.target.closest('tr')); if (i < 0) return;
+    var n = v[Math.max(0, Math.min(v.length - 1, i + (e.key === 'j' ? 1 : -1)))];
+    $('button', n).tabIndex = 0; $('button', n).focus(); e.preventDefault();
+  });
+  libQ.addEventListener('input', function () {
+    var q = libQ.value.trim().toLowerCase();
+    $$('tr', libBody).forEach(function (r) { r.hidden = q !== '' && r.dataset.text.indexOf(q) < 0; });
+    var v = libRows();
+    if (v.length && !v.some(function (r) { return r.getAttribute('aria-current') === 'true'; })) libSelect(v[0]);
+    libSentence();
+  });
+  libSelect($$('tr', libBody)[0]); libSentence();
+
+  /* ---------- skróty globalne ---------- */
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' && e.target.type !== 'checkbox' && e.target.type !== 'radio') return;
+    if (tag === 'select' || tag === 'textarea') return;
+    if (e.key === 't') { setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark'); }
+    if (e.key === '/') { e.preventDefault(); libQ.focus(); }
+  });
+
+  setCurrent(rows[0]);
+  recalc();
+})();
+</script>
+</body>
+</html>
