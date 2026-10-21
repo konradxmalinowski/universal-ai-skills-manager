@@ -168,7 +168,10 @@ z agregatami, eksportu do ZIP i Git, autoaktualizacji, podpisanych wydań, synch
 
 ## 3. Etapy
 
-### Etap 1: Szkielet
+### Etap 1: Szkielet - ZAMKNIĘTY
+
+Status: wszystkie kryteria akceptacji spełnione na czterech celach w jednym przebiegu
+(`39525840100`, commit `e34367a`). Pierwszy etap zamknięty w tym projekcie.
 
 Zakres: projekt Electron plus Angular 20 standalone, TypeScript strict, SCSS. Granice modułów
 z lintem. Routing i pusty szkielet jedenastu widoków plus Diagnostics. Design system: tokeny,
@@ -181,6 +184,9 @@ Kryteria akceptacji:
    macierzy i artefakty powstają.
 2. `better-sqlite3` ładuje się w zbudowanej aplikacji na każdym celu macierzy. Test E2E otwiera
    bazę i wykonuje zapytanie. To jest kryterium, nie formalność: tu rozstrzyga się ryzyko R2.
+   **Spełnione** przez trzy testy w `tests/e2e/packaged-db.spec.ts`, zielone na czterech celach.
+   Jeden element dowodu, bezpośrednie wykonanie zapytania FTS wewnątrz paczki, przechodzi
+   świadomie na Etap 2 (R2).
 3. Reguła granic modułów jest wymuszona: celowy import `node:fs` w `core/` wywala lint w CI.
 4. Hartowanie jest sprawdzone testem, nie konfiguracją: test E2E potwierdza, że `require`
    w rendererze nie istnieje, a żądanie sieciowe wychodzące jest zablokowane.
@@ -193,18 +199,33 @@ Zakres: model kanoniczny (ADR 0023). Zapis i odczyt według układu danych (ADR 
 store i log operacji jako warstwa danych (ADR 0019). Lista, wyszukiwanie FTS, filtrowanie,
 szczegóły, edycja, walidacja. Import pojedynczego pliku. Metadane i pliki powiązane. Walidator
 kolizji wielkości liter (ADR 0017). Normalizacja końców linii (ADR 0016). Przebudowa indeksu
-z plików.
+z plików z kwarantanną i triażem przyczyn awarii otwarcia (ADR 0029). Okno przed otwarciem
+indeksu, z widokiem dla odmowy i dla odbudowy (ADR 0029, ARCHITECTURE 13.1).
+
+Dwa zadania odziedziczone po Etapie 1, oba konkretne: bezpośredni dowód FTS5 w zapakowanej
+aplikacji (domyka ryzyko R2) oraz docelowy model awarii startu indeksu.
 
 Kryteria akceptacji:
 1. Tworzenie, edycja, wyszukiwanie i usuwanie elementu działa z końca na koniec, przez interfejs,
    z potwierdzeniem operacji destrukcyjnej.
 2. Usunięcie `index.sqlite` i restart aplikacji odtwarza pełny indeks z plików, bez utraty
    danych. Test automatyczny, nie ręczny.
-3. Próba zapisu elementu kolidującego po `lower(slug)` jest odrzucona z czytelnym komunikatem,
+3. Cztery przyczyny awarii otwarcia indeksu dają trzy różne reakcje (ADR 0029): uszkodzenie
+   i nieznany schemat prowadzą do odbudowy po kwarantannie, schemat z przyszłości do odmowy
+   (asercja negatywna: **nie jest** odbudowywany, bo to zniszczyłoby log operacji), `userData`
+   bez prawa zapisu i brak modułu natywnego do odmowy. Nieudana kwarantanna wstrzymuje odbudowę,
+   a nie przechodzi w "usuń i spróbuj".
+4. Odmowa startu i odbudowa indeksu mają widok w interfejsie, nie tylko komunikat na stderr.
+   Test uruchamia aplikację nad uszkodzonym indeksem i sprawdza, że okno się pojawia i mówi,
+   co się stało.
+5. Zapytanie FTS wykonane **wewnątrz zapakowanej aplikacji** na pierwszej prawdziwej tabeli
+   pełnotekstowej biblioteki, na czterech celach macierzy. To domyka ostatni element ryzyka R2
+   i jest powodem, dla którego R2 nie zostało zamknięte w Etapie 1.
+6. Próba zapisu elementu kolidującego po `lower(slug)` jest odrzucona z czytelnym komunikatem,
    na wszystkich trzech systemach.
-4. Element z plikami pomocniczymi zapisuje się i odczytuje razem z nimi, włącznie ze ścieżkami
+7. Element z plikami pomocniczymi zapisuje się i odczytuje razem z nimi, włącznie ze ścieżkami
    ze spacjami i znakami spoza ASCII.
-5. Element zapisany na Linuksie i skopiowany na macOS oraz Windows otwiera się bez błędu.
+8. Element zapisany na Linuksie i skopiowany na macOS oraz Windows otwiera się bez błędu.
 
 ### Etap 3: Import z Claude Code i Codeksa
 
@@ -415,7 +436,7 @@ Trzy ranked ścieżki wyjścia, gdyby ograniczenie okazało się nieakceptowalne
 
 Wczesny sygnał: preflight odmawia edycji na realnych plikach użytkowników.
 
-### R2: Moduł natywny `better-sqlite3` na czterech celach. Poziom: ŚREDNI (był ŚREDNI do WYSOKIEGO)
+### R2: Moduł natywny `better-sqlite3` na czterech celach. Poziom: NISKI, z jednym elementem dziedziczonym przez Etap 2
 
 Brak prebuildu dla pary wersja Electrona plus platforma wymusza kompilację i pełny toolchain
 na runnerze. Skutek: build nie przechodzi, potencjalnie w dniu wydania.
@@ -425,35 +446,70 @@ akceptacji Etapu 1 obejmuje otwarcie bazy w zbudowanej aplikacji na każdym celu
 za portem `IndexStore`, więc wymiana jest możliwa, a dane nie są w bazie (ADR 0014), więc wymiana
 nie oznacza migracji.
 
-**Stan faktyczny po pierwszym przebiegu macierzy, commit `06d1603`:**
+#### Stan: domknięte przebiegiem `39525840100` na commicie `e34367a`
 
-| Cel | Wynik | Co to znaczy dla R2 |
+Cała macierz zielona, wszystkie sześć zadań, włącznie z `windows-x64`. Na Windowsie 48 testów
+jednostkowych, kontraktowych i integracyjnych oraz 14 z 14 E2E w 8,2 sekundy, przy poprzednim
+przebiegu na tym celu wynoszącym 4,1 minuty samych limitów.
+
+Dowód stoi na trzech testach w `tests/e2e/packaged-db.spec.ts`, zielonych na czterech celach
+w jednym przebiegu:
+
+| Test | Co dowodzi | Czas |
 |---|---|---|
-| `macos-arm64` | zielony | moduł natywny potwierdzony, bez przebudowy |
-| `macos-x64` | zielony | moduł natywny potwierdzony, bez przebudowy |
-| `linux-x64` | padł na dwóch testach E2E zapakowanej aplikacji (sandbox Electrona pod `xvfb`) | moduł natywny **działa**: testy integracyjne i E2E przeciw `dist/` przeszły. Awaria dotyczy uruchamiania paczki, nie bazy |
-| `windows-x64` | padł **przed testami**, bo harness izolacji uznał katalog roboczy CI za żywą konfigurację użytkownika | moduł natywny **niezweryfikowany**. To jedyne miejsce, w którym R2 jest nadal otwarte |
+| `:99` | moduł natywny ładuje się i wykonuje zapytania przy **zwykłym** starcie zapakowanej aplikacji | 268 ms |
+| `:111` | drugi start nie duplikuje wpisu w rejestrze migracji, czyli migracja jest idempotentna w paczce | 533 ms |
+| `:132` | binding w paczce jest tym samym plikiem, który ładuje proces testu, a FTS5 w tym procesie działa | 6 ms |
 
-Czyli ryzyko spadło na trzech celach z czterech, a nie zniknęło. Spada do NISKIEGO w momencie, w
-którym `windows-x64` przejdzie testy. Oba niepowodzenia naprawia `devsecops-agent` i żadne z nich
-nie dotyczy decyzji z ADR 0007.
+**Dowód jest deterministyczny i sprawdzony w obie strony.** Po wyłączeniu migracji przy otwarciu
+test pada z komunikatem `zapakowana aplikacja nie zalozyla schematu`, po przywróceniu przechodzi
+w 270 ms. To jest różnica wobec poprzedniego narzędzia, które zawodziło losowo i nigdy nie zostało
+sprawdzone pod kątem tego, czy w ogóle potrafi paść z właściwego powodu.
 
-Skutek uboczny wart zapisania: na obu macOS-ach prebuild wystarczył, nic nie trzeba było
-przebudowywać, co potwierdza usunięcie `@electron/rebuild` z zależności. Ostateczne potwierdzenie
-zależy od Windowsa, bo to tam ryzyko braku prebuildu jest największe.
+#### Dlaczego R2 nie stoi na starych testach, choć one też przeszły
 
-Awaria Windowsa wzięła się z mechanizmu, który sam zaprojektowałem: harness izolacji odmawia
-startu, gdy katalog bazowy testów leży w żywej konfiguracji (ARCHITECTURE sekcja 12.2).
+Dwa stare testy przez protokół debugowania przeszły w tym samym przebiegu. R2 celowo na nich
+nie stoi, bo ich zielony wynik jest trafieniem, nie dowodem: wcześniej ten sam zawis startu paczki
+odtworzył się lokalnie na macOS (pada drugi start tej samej paczki w pełnym przebiegu E2E, co drugi
+albo co trzeci raz, w izolacji przechodzi zawsze), a powtórka wcześniej zielonego zadania
+`windows-x64` na niezmienionym commicie `1b22da6` padła, więc nie było ani regresji, ani winowajcy
+w commitach.
+
+To jest najczystsza ilustracja czwartej reguły dowodzenia (ARCHITECTURE sekcja 12.6): zielony
+wynik z narzędzia o nieznanej niezawodności nie jest dowodem, dopóki nie wiemy, jak często to
+narzędzie zawodzi. Zielony wynik niewiarygodnego narzędzia nie staje się dowodem przez to, że
+wiarygodne narzędzie obok pokazuje to samo.
+
+#### Jedyny element otwarty: bezpośredni dowód FTS5 w paczce
+
+Zastrzeżenie zostaje w mocy i jest widoczne w samej nazwie testu `:132`, która mówi wprost, że
+dowodzi identyczności pliku bindingu i działania FTS5 **w procesie testu**, a nie w zapakowanej
+aplikacji. Inferencja jest mocna (porównanie SHA-256 pokazuje, że to ten sam plik), ale to nadal
+inferencja.
+
+Tabele `startup_probe` i `startup_probe_fts` istniały wyłącznie po to, żeby test miał co sprawdzać,
+czyli były tym samym wzorcem co flaga diagnostyczna w kodzie produkcyjnym, tylko schowanym
+w schemacie bazy. Zostały usunięte, a schemat w wersji 1 to sam rejestr migracji. Wybór jest
+świadomy: wolimy jeden element otwarty o etap dłużej niż tabelę w schemacie produkcyjnym, której
+jedynym użytkownikiem jest asercja (ARCHITECTURE sekcja 12.6).
+
+**Zadanie dziedziczone przez Etap 2, z terminem, nie dług bez terminu:** pierwsza prawdziwa tabela
+pełnotekstowa biblioteki musi mieć test wykonujący zapytanie FTS **wewnątrz zapakowanej
+aplikacji**, nie w procesie testu. Jest to kryterium akceptacji Etapu 2, a nie zadanie "przy
+okazji". W tym momencie R2 domyka się w całości i wypada z listy ryzyk.
+
+#### Awaria Windowsa z pierwszego przebiegu i jej ogólniejszy wniosek
+
+Pierwsza awaria `windows-x64` wzięła się z mechanizmu, który sam zaprojektowałem: harness izolacji
+odmawia startu, gdy katalog bazowy testów leży w żywej konfiguracji (ARCHITECTURE sekcja 12.2).
 Na runnerze trafił fałszywie dodatnio na katalog roboczy CI. Mechanizm zadziałał zgodnie
 z zamysłem, czyli odmówił zamiast ryzykować, i to jest dobra strona tej awarii. Zła strona: jego
-warunek był napisany pod maszynę dewelopera i nie przewidywał środowiska CI, w którym katalog
-domowy i katalog roboczy mogą być tym samym drzewem. Poprawka należy do warunku, nie do reguły.
+warunek był napisany pod maszynę dewelopera. Poprawka należała do warunku, nie do reguły.
 
 Wniosek jest ogólniejszy niż R2 i dlatego trafił do strategii testowania jako reguła projektowa
 (ARCHITECTURE sekcja 12.5): bezpiecznik chroniący konfigurację użytkownika sam stał się punktem
 awarii na platformie, której nie przewidziano, a dziewięć testów sprawdzających, że blokuje, nie
-mogło tego wykryć, bo żaden nie sprawdzał, że przepuszcza. Od teraz każdy mechanizm, który czemuś
-odmawia, ma testy po obu stronach.
+mogło tego wykryć, bo żaden nie sprawdzał, że przepuszcza.
 
 ### R3: Symlinki i uprawnienia na Windowsie. Poziom: ŚREDNI
 

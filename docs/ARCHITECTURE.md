@@ -707,6 +707,7 @@ Windowsie, dostajemy brak efektu i pokazujemy zieloną kontrolkę.
   index.sqlite             indeks, wyszukiwanie (FTS5), log operacji, stan sync
   objects/<aa>/<sha256>    content-addressed store (wersje, backupy)
   backups/<timestamp>/     backup przed operacja destrukcyjna + MANIFEST
+  quarantine/              uszkodzony indeks odstawiony przed odbudowa (ADR 0029)
   logs/                    logi z redakcja
 ```
 
@@ -718,6 +719,14 @@ poza aplikacją (podejrzeć, zacommitować, zgrepować). Baza trzyma to, co słu
 i śledzeniu stanu, i musi być odtwarzalna ze plików. Utrata `index.sqlite` kosztuje czas
 przebudowy, nie dane. To jest warunek zaufania do aplikacji, która ma być jedynym miejscem
 trzymania konfiguracji.
+
+Odtwarzalność jest ścieżką kodu, nie właściwością na papierze (ADR 0029). Uszkodzony indeks jest
+odbudowywany po przeniesieniu starego pliku do `userData/quarantine/`, a nie powodem odmowy
+startu. Odmowa jest zarezerwowana dla trzech przyczyn, których odbudowa nie rozwiązuje: schemat
+z przyszłości (odbudowa wyrzuciłaby log operacji, czyli jedyną rzecz nieodtwarzalną z plików),
+`userData` bez możliwości zapisu, oraz moduł natywny, który się nie ładuje. Odbudowa sama jest
+operacją destrukcyjną na starym pliku, więc obowiązuje ją warunek kopii z ADR 0028: bez udanej
+kwarantanny odbudowa nie startuje.
 
 **Historia i rollback stoją na content store, nie na Gicie.** `objects/<sha256>` daje deduplikację,
 porównywanie wersji i przywracanie bez żadnego zewnętrznego narzędzia. Wymagania mówią wprost:
@@ -1001,7 +1010,50 @@ której nie przewidziano. Reguła obowiązuje każdy mechanizm, który czemuś o
 Każdy wiersz tej tabeli ma dwie kolumny i obie są wymagane. Kryterium akceptacji jest proste:
 żaden bezpiecznik nie wchodzi do repozytorium z samą kolumną lewą.
 
-### 12.6 Co bierzemy z korpusu regresyjnego generatora
+### 12.6 Zielony wynik z narzędzia o nieznanej niezawodności nie jest dowodem
+
+Czwarta reguła tej samej rodziny, co trzy opisane w `README` projektu. Brzmi: **zielony wynik
+z narzędzia o nieznanej niezawodności nie jest dowodem, dopóki nie wiemy, jak często to narzędzie
+zawodzi.**
+
+Przypadek, który ją zrodził, dotyczy mnie wprost. Obniżyłem ryzyko R2 na podstawie zielonych
+wyników testów zapakowanej aplikacji na obu celach macOS i na Linuksie. Potem ten sam zawis startu
+paczki odtworzył się lokalnie na macOS: pada drugi start tej samej paczki w pełnym przebiegu E2E,
+co drugi albo co trzeci raz, a w izolacji ten sam test przechodzi zawsze. Powtórka zielonego
+zadania `windows-x64` na tym samym commicie też padła, więc nie było regresji ani winowajcy
+w commitach. Czyli zielone wyniki, na które się powoływałem, były trafieniami szczęśliwymi,
+a nie dowodami, i traktowanie ich jako dowodów było moim błędem, nie pechem narzędzia.
+
+Najostrzejsza postać tej reguły wyszła dopiero przy domknięciu R2. W zielonym przebiegu całej
+macierzy **stare testy przez protokół debugowania też przeszły**, a mimo to R2 na nich nie stoi.
+Zielony wynik niewiarygodnego narzędzia nie staje się dowodem przez to, że wiarygodne narzędzie
+obok pokazuje to samo. Nowe narzędzie jest deterministyczne i sprawdzone w obie strony: po
+wyłączeniu migracji pada z konkretnym komunikatem, po przywróceniu przechodzi w 270 ms zamiast
+zawisać na dwie minuty. Stare nigdy nie zostało sprawdzone pod kątem tego, czy w ogóle potrafi
+paść z właściwego powodu, i to jest cała różnica między nimi.
+
+Trzy wnioski operacyjne:
+
+1. **Narzędzie dowodowe ma mieć zmierzoną powtarzalność, zanim na nim coś oprzemy.** Test, który
+   przechodzi w izolacji, a pada w pełnym przebiegu, nie ma powtarzalności i nie dowodzi niczego
+   poza tym, że czasem działa.
+2. **Im prostsze narzędzie, tym mocniejszy dowód.** Zastąpienie przyłączania przez protokół
+   debugowania obserwacją czarnoskrzynkową (uruchom binarkę, poczekaj na zmianę stanu na dysku,
+   zabij proces, sprawdź plik własnym kodem) usunęło z pomiaru całą warstwę, która zawodziła.
+3. **Dowód sprawdza się w obie strony.** Narzędzie musi padać, gdy mierzona rzecz jest zepsuta,
+   i przechodzić, gdy jest sprawna. To ta sama reguła, co "test, którego nikt nie widział
+   padającego, nie jest testem", zastosowana do narzędzia pomiarowego, a nie do kodu.
+
+Czwarty wniosek jest regułą negatywną i ma własny koszt: **nie dodajemy do kodu produkcyjnego
+rzeczy, których jedynym użytkownikiem jest asercja.** Dotyczy to flagi diagnostycznej w kodzie,
+ale też tabeli w schemacie bazy, bo schemat jest kodem produkcyjnym. Cena jest realna i została
+przyjęta świadomie: FTS5 w zapakowanej aplikacji jest teraz dowodzone przez inferencję, nie
+bezpośrednio, a bezpośredni dowód jest kryterium akceptacji Etapu 2, razem z pierwszą prawdziwą
+tabelą pełnotekstową (ROADMAP, ryzyko R2). Wolimy jeden element dowodu otwarty o etap dłużej niż
+schemat produkcyjny z tabelą, której nikt nie używa. Odroczenie z terminem i kryterium akceptacji
+nie jest długiem, bo ma datę domknięcia; odroczenie bez nich byłoby.
+
+### 12.7 Co bierzemy z korpusu regresyjnego generatora
 
 Generator ma 1328 linii testów i 123 przechodzące przypadki. Przenoszalna jest **metoda i część
 przypadków**, nie same asercje, bo one mówią o generatorze, nie o aplikacji. Konkretnie bierzemy:
@@ -1026,6 +1078,14 @@ dwa motywy przez zmienne CSS, komponenty bazowe z obsługą fokusu i rolami ARIA
 reguła organizacyjna, która ma znaczenie przy tym produkcie: **każdy stan operacji na plikach
 ma swój widok**. Plan, konflikt, trwa, powodzenie, częściowe powodzenie, błąd, wycofane.
 Aplikacja, która nadpisuje pliki użytkownika, nie może mieć stanu "coś się stało".
+
+Ta reguła obowiązuje także awarie startu, i to wymusza konkretną kolejność bootstrapu:
+**okno powstaje przed otwarciem indeksu**, a wynik otwarcia jest do niego wpuszczany jako stan
+(ADR 0029). Inaczej odmowa startu kończy się kodem wyjścia i komunikatem na stderr, czyli
+informacją dla kogoś, kto uruchomił aplikację z terminala, a nie dla adresata produktu. Stderr
+i kod 1 zostają dla CI i testów, ale jako kanał dodatkowy. Dotyczy to trzech stanów: odmowa
+z podanym powodem i ścieżką do kwarantanny, odbudowa indeksu z informacją, ile elementów
+wczytano i czego nie dało się odzyskać, oraz start normalny.
 
 ### 13.2 Widoki
 

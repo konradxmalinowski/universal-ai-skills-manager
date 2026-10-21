@@ -1,7 +1,13 @@
 # ADR 0014: Pliki są prawdą, baza jest indeksem
 
-Status: zaakceptowane
+Status: zaakceptowane, uzupełnione przez ADR 0029
 Data: 2026-10-20
+
+> Uzupełnienie wprowadzone przez ADR 0029: odtwarzalność indeksu jest ścieżką kodu, nie
+> właściwością na papierze. Uszkodzony indeks jest odbudowywany po kwarantannie starego pliku,
+> a nie powodem odmowy startu. Wyjątek wymieniony niżej (log operacji, którego z plików
+> odtworzyć się nie da) jest powodem, dla którego indeksu ze schematem z przyszłości
+> odbudowywać **nie wolno**.
 
 ## Kontekst
 

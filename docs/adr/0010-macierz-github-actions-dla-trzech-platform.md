@@ -44,9 +44,11 @@ do `contents: write`, żadnych sekretów (ADR 0003).
 
 Cztery cele, nie trzy, z jednego powodu: `better-sqlite3` to moduł natywny i macOS arm64 oraz
 x64 to osobne cele. Jeden wpis dla macOS oznaczałby, że o problemie dowiadujemy się przy
-pierwszym wydaniu. Pierwszy realny przebieg macierzy to potwierdził z drugiej strony: oba cele
-macOS przeszły, a Windows nie dotarł nawet do testów, więc moduł natywny ma tam nadal status
-niezweryfikowany (ROADMAP, ryzyko R2).
+pierwszym wydaniu. Przebiegi macierzy to potwierdziły z dwóch stron. Pierwszy przebieg wyłapał
+awarię wyłącznie windowsową, której nie dałoby się zobaczyć nigdzie indziej (fałszywie dodatni
+bezpiecznik harnessu izolacji, przez różnicę w działaniu `path.relative` między dyskami).
+Przebieg `39525840100` na commicie `e34367a` przeszedł w całości na wszystkich czterech celach,
+co domknęło ryzyko R2 poza jednym elementem (ROADMAP, R2).
 
 Macierz działa od Etapu 1, nie od Etapu 9.
 

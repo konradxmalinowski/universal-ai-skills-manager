@@ -186,6 +186,34 @@ Dwa testy w `tests/e2e/packaged-app.spec.ts` zostaja jako to, czym sa: testy
 przylaczania Playwrighta do zapakowanej aplikacji. Ich wynik nie jest dowodem
 na dzialanie modulu natywnego i nie powinien byc tak czytany.
 
+### Znane ograniczenie: przylaczanie Playwrighta do zapakowanej aplikacji
+
+`electron.launch` Playwrighta zawiesza sie losowo, gdy celem jest zapakowana
+binarka. Zawis jest cichy: proces startuje, nic nie wypisuje, okno nie
+powstaje, a Playwright czeka do limitu. Nie udalo sie ustalic przyczyny.
+Udalo sie ustalic, gdzie jej **nie ma**, i to jest zmierzone, nie wywnioskowane:
+
+| Sprawdzone                                                   | Wynik                                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `NODE_OPTIONS`, `ELECTRON_RUN_AS_NODE` w srodowisku testu    | nieobecne na macOS i na Windowsie                                                                 |
+| Blokada pojedynczej instancji                                | dwie instancje z roznymi katalogami danych zyja rownolegle                                        |
+| Procesy pozostale po przebiegu                               | zero                                                                                              |
+| Koszt pierwszego startu niepodpisanej binarki                | limit 180 s i 300 s daja identyczny wynik, a powtorka przebiegu, ktory byl zielony, pada tak samo |
+| Nazwa binarki wybierana przez resolver                       | dokladne dopasowanie, potwierdzone w logu CI                                                      |
+| Inspektor Node w zapakowanej aplikacji, uruchamianej wprost  | odpowiada 5 razy na 5, srednio po 105 ms                                                          |
+| `chromiumSandbox` i `ELECTRON_ENABLE_LOGGING` jako przyczyna | porazki wystepuja przy kazdym ustawieniu tych opcji                                               |
+
+Pomiar rozstrzygajacy: szesc kolejnych uruchomien tej samej paczki w jednym
+procesie, w trzech wariantach opcji startu, dalo 0, 1 i 2 porazki na szesc.
+Ta sama binarka uruchamiana wprost, z `--inspect=0`, zglasza inspektor
+bezblednie. Przyczyna jest wiec w sekwencji przylaczania Playwrighta, nie
+w aplikacji i nie w opcjach, ktore mu podajemy.
+
+Dlatego dowod na ryzyko R2 nie przechodzi przez to narzedzie, a przez odczyt
+stanu bazy z dysku (sekcja wyzej). Dwa testy w `packaged-app.spec.ts`, ktore
+nadal przez nie przechodza, trzeba czytac z ta wiedza: ich czerwien nie mowi
+nic o module natywnym, a ich zielen nie jest potwierdzeniem.
+
 ## Zaleznosci i powody
 
 Kryterium akceptacji Etapu 1 punkt 5: kazda pozycja w `package.json` ma powod.
