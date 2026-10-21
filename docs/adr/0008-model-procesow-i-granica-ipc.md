@@ -1,7 +1,12 @@
 # ADR 0008: Renderer bez dostępu do systemu, IPC przez jawną listę kanałów
 
-Status: zaakceptowane
+Status: zaakceptowane, rozszerzone przez ADR 0030
 Data: 2026-10-20
+
+> Rozszerzenie wprowadzone przez ADR 0030: lista kanałów zyskuje dwa wpisy na ręczną odbudowę
+> indeksu (plan i zastosowanie, Etap 2). Jest to zmiana tej listy, a nie wyjątek od niej, i dlatego
+> ma własny rekord. Reguła 1 stąd (renderer nie przekazuje ścieżek) jest tam głównym argumentem
+> za bezpieczeństwem najmocniejszego kanału na całej liście.
 
 ## Kontekst
 

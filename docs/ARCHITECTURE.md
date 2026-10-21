@@ -127,6 +127,34 @@ Przekładają się na dwanaście modułów z sekcji 6 i na jedenaście widoków 
 Backendu, kont, bazy w chmurze, mikroserwisów, telemetrii, automatycznej synchronizacji MCP
 (ADR 0020), autoaktualizacji w MVP (bez podpisu nie przejdzie na macOS, ADR 0003).
 
+### 2.4 Każda obietnica ma zapisany warunek wykonalności
+
+Reguła o tym, jak pisze się ten dokument, a nie o tym, co produkt robi. Powstała, bo ta sama
+klasa błędu wyszła w tym projekcie trzy razy, za każdym razem w moim tekście, nie w czyjejś
+implementacji.
+
+**Obietnica architektoniczna bez zapisanego warunku wykonalności jest obietnicą warunkową,
+której warunku nikt nie zna.** Dotyczy to zdań w czasie teraźniejszym o tym, co aplikacja robi
+albo gwarantuje.
+
+Trzy nawroty, dla pamięci i dla kalibracji:
+
+| Obietnica | Czego brakowało | Gdzie domknięte |
+|---|---|---|
+| "Backup przed każdą operacją destrukcyjną" | co się dzieje, gdy kopia jest niemożliwa | ADR 0028: wynik `blocked` ustalany w planie |
+| "Baza jest odtwarzalna z plików" | kto i kiedy tę odbudowę uruchamia | ADR 0029: triaż przyczyn i ścieżka odbudowy |
+| "Każda przyczyna z triażu ma swoją reakcję" | czy do każdej przyczyny da się w ogóle dojść | ADR 0029 punkt 4: statyczny import modułu natywnego czynił jedną gałąź nieosiągalną |
+
+Czwarty, z innej rodziny, ale ta sama wada: harness izolacji miał regułę "odmawiaj w żywej
+konfiguracji" bez warunku "i przepuszczaj poza nią", przez co zablokował cel macierzy
+(sekcja 12.5).
+
+Trzy pytania kontrolne do każdego zdania, które coś gwarantuje: **kto to wykonuje**, **co się
+dzieje, gdy się nie da**, i **czy da się do tego przypadku dojść**. Zdanie, które nie odpowiada
+na wszystkie trzy, jest szkicem, a nie decyzją. Ta reguła należy do rodziny trzech reguł
+dowodzenia z `README` i czwartej z sekcji 12.6, z jedną różnicą: tamte mówią, czego wymagamy
+od dowodu, ta mówi, czego wymagamy od obietnicy.
+
 ---
 
 ## 3. Architektura systemu
@@ -569,7 +597,9 @@ poza anulowaniem operacji. Lista jest jawna i zamknięta; brak kanału ogólnego
 | `history:rollback` | `operationId`, potwierdzenie | raport wycofania |
 | `profiles:list`, `profiles:save`, `profiles:export-plan` | | |
 | `settings:get`, `settings:set` | | |
-| `diagnostics:report` | | raport środowiska i nieznanych konstrukcji |
+| `diagnostics:report` | | raport środowiska, nieznanych konstrukcji i stanu otwarcia indeksu |
+| `diagnostics:rebuild-index-plan` (Etap 2) | | plan ręcznej odbudowy: nazwa pliku w kwarantannie, liczba elementów do odtworzenia, czego nie odzyska, `recoverability` kroku kwarantanny (ADR 0030) |
+| `diagnostics:rebuild-index-apply` (Etap 2) | `planId`, potwierdzenie | raport odbudowy. Najmocniejsze uprawnienie na tej liście, uzasadnienie bezpieczeństwa w ADR 0030 |
 | zdarzenia main do renderera | `progress`, `operation-log` | tylko postęp i log, nigdy treść pliku |
 
 Trzy reguły tej granicy:
@@ -1024,13 +1054,20 @@ zadania `windows-x64` na tym samym commicie też padła, więc nie było regresj
 w commitach. Czyli zielone wyniki, na które się powoływałem, były trafieniami szczęśliwymi,
 a nie dowodami, i traktowanie ich jako dowodów było moim błędem, nie pechem narzędzia.
 
-Najostrzejsza postać tej reguły wyszła dopiero przy domknięciu R2. W zielonym przebiegu całej
-macierzy **stare testy przez protokół debugowania też przeszły**, a mimo to R2 na nich nie stoi.
-Zielony wynik niewiarygodnego narzędzia nie staje się dowodem przez to, że wiarygodne narzędzie
-obok pokazuje to samo. Nowe narzędzie jest deterministyczne i sprawdzone w obie strony: po
-wyłączeniu migracji pada z konkretnym komunikatem, po przywróceniu przechodzi w 270 ms zamiast
-zawisać na dwie minuty. Stare nigdy nie zostało sprawdzone pod kątem tego, czy w ogóle potrafi
-paść z właściwego powodu, i to jest cała różnica między nimi.
+Najostrzejsza postać tej reguły wyszła przy domknięciu R2. W zielonym przebiegu całej macierzy
+stare testy przez protokół debugowania **też przeszły**, a mimo to R2 na nich nie stanęło. Zielony
+wynik niewiarygodnego narzędzia nie staje się dowodem przez to, że wiarygodne narzędzie obok
+pokazuje to samo. Nowe narzędzie jest deterministyczne i sprawdzone w obie strony: po wyłączeniu
+migracji pada z konkretnym komunikatem, po przywróceniu przechodzi w 270 ms zamiast zawisać
+na dwie minuty. Stare nigdy nie zostało sprawdzone pod kątem tego, czy w ogóle potrafi paść
+z właściwego powodu, i to jest cała różnica między nimi.
+
+Te dwa testy zostały następnie **usunięte, a nie oznaczone jako pomijane**, bo pomijany test
+udaje, że coś sprawdza. Powód usunięcia jest wart zapamiętania, bo to druga strona tej samej
+reguły: test, który czerwieni macierz mniej więcej co czwarty przebieg bez powodu, uczy ignorować
+czerwony wynik, czyli psuje dokładnie to, czego ten rozdział broni. Dopóki były jedynym dowodem
+na moduł natywny w paczce, były tego warte mimo kosztu; przestały być w chwili, gdy dowód przeszedł
+na narzędzie deterministyczne. Ich dawne pokrycie i warunek powrotu są opisane w `README`.
 
 Trzy wnioski operacyjne:
 

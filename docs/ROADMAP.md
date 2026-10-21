@@ -215,17 +215,39 @@ Kryteria akceptacji:
    (asercja negatywna: **nie jest** odbudowywany, bo to zniszczyłoby log operacji), `userData`
    bez prawa zapisu i brak modułu natywnego do odmowy. Nieudana kwarantanna wstrzymuje odbudowę,
    a nie przechodzi w "usuń i spróbuj".
-4. Odmowa startu i odbudowa indeksu mają widok w interfejsie, nie tylko komunikat na stderr.
+4. **Odziedziczone po Etapie 1: trzy stany otwarcia indeksu mają widok** (ADR 0029 punkt 3,
+   wykonany dotąd do połowy). Ścieżka danych już jest: okno powstaje przed otwarciem indeksu,
+   a stan otwarcia idzie do renderera przez `diagnostics:report`. Brakuje widoku, bo renderer
+   w Etapie 1 jest pustą powłoką i taka była decyzja. Do pokazania:
+   - **odmowa**: powód i ścieżka do pliku w kwarantannie,
+   - **odbudowa**: liczba wczytanych elementów oraz jawna lista tego, czego nie odzyskano,
+   - **start normalny**.
+
+   Zastrzeżenie, bez którego ten widok skłamie: raport mówi dziś `restoredItems: 0`, bo warstwa
+   biblioteki, z której odbudowa czerpie, powstaje dopiero w tym etapie. **Zero wczytanych
+   elementów nie może wyglądać na sukces.** Nieodzyskane są dwie rzeczy i obie trzeba wymienić
+   wprost: log operacji, nieodtwarzalny z plików z definicji (ADR 0014), oraz zawartość
+   biblioteki, dopóki tej warstwy nie ma.
+
    Test uruchamia aplikację nad uszkodzonym indeksem i sprawdza, że okno się pojawia i mówi,
    co się stało.
-5. Zapytanie FTS wykonane **wewnątrz zapakowanej aplikacji** na pierwszej prawdziwej tabeli
+5. Każda z czterech gałęzi triażu jest **osiągalna**, co jest osobnym testem od testu jej
+   zachowania (ADR 0029 punkt 4). Gałąź "moduł natywny się nie ładuje" była nieosiągalna, dopóki
+   `better-sqlite3` szedł importem statycznym, bo proces padał przed powstaniem okna.
+6. Ręczna odbudowa z Diagnostics działa przez dwa kanały z ADR 0030, z planem przed
+   zastosowaniem. Asercje: plan pokazuje, czego odbudowa nie odzyska; `apply` odmawia, gdy
+   kwarantanna jest niemożliwa (`blocked`) oraz gdy plan jest przeterminowany; kanał nie przyjmuje
+   żadnej ścieżki; dwa równoległe wywołania nie wchodzą sobie w drogę. To jedyne wyjście ze stanu
+   "schemat z przyszłości", więc test obejmuje też ten przypadek z jawnym potwierdzeniem utraty
+   logu operacji.
+7. Zapytanie FTS wykonane **wewnątrz zapakowanej aplikacji** na pierwszej prawdziwej tabeli
    pełnotekstowej biblioteki, na czterech celach macierzy. To domyka ostatni element ryzyka R2
    i jest powodem, dla którego R2 nie zostało zamknięte w Etapie 1.
-6. Próba zapisu elementu kolidującego po `lower(slug)` jest odrzucona z czytelnym komunikatem,
+8. Próba zapisu elementu kolidującego po `lower(slug)` jest odrzucona z czytelnym komunikatem,
    na wszystkich trzech systemach.
-7. Element z plikami pomocniczymi zapisuje się i odczytuje razem z nimi, włącznie ze ścieżkami
+9. Element z plikami pomocniczymi zapisuje się i odczytuje razem z nimi, włącznie ze ścieżkami
    ze spacjami i znakami spoza ASCII.
-8. Element zapisany na Linuksie i skopiowany na macOS oraz Windows otwiera się bez błędu.
+10. Element zapisany na Linuksie i skopiowany na macOS oraz Windows otwiera się bez błędu.
 
 ### Etap 3: Import z Claude Code i Codeksa
 
@@ -466,19 +488,32 @@ test pada z komunikatem `zapakowana aplikacja nie zalozyla schematu`, po przywr�
 w 270 ms. To jest różnica wobec poprzedniego narzędzia, które zawodziło losowo i nigdy nie zostało
 sprawdzone pod kątem tego, czy w ogóle potrafi paść z właściwego powodu.
 
-#### Dlaczego R2 nie stoi na starych testach, choć one też przeszły
+#### Dlaczego R2 nie stanęło na starych testach, choć one też przeszły
 
-Dwa stare testy przez protokół debugowania przeszły w tym samym przebiegu. R2 celowo na nich
-nie stoi, bo ich zielony wynik jest trafieniem, nie dowodem: wcześniej ten sam zawis startu paczki
-odtworzył się lokalnie na macOS (pada drugi start tej samej paczki w pełnym przebiegu E2E, co drugi
-albo co trzeci raz, w izolacji przechodzi zawsze), a powtórka wcześniej zielonego zadania
-`windows-x64` na niezmienionym commicie `1b22da6` padła, więc nie było ani regresji, ani winowajcy
-w commitach.
+Dwa stare testy przez protokół debugowania przeszły w tym samym zielonym przebiegu. R2 celowo
+na nich nie stanęło, bo ich zielony wynik jest trafieniem, nie dowodem: wcześniej ten sam zawis
+startu paczki odtworzył się lokalnie na macOS (pada drugi start tej samej paczki w pełnym przebiegu
+E2E, co drugi albo co trzeci raz, w izolacji przechodzi zawsze), a powtórka wcześniej zielonego
+zadania `windows-x64` na niezmienionym commicie `1b22da6` padła, więc nie było ani regresji,
+ani winowajcy w commitach.
 
 To jest najczystsza ilustracja czwartej reguły dowodzenia (ARCHITECTURE sekcja 12.6): zielony
 wynik z narzędzia o nieznanej niezawodności nie jest dowodem, dopóki nie wiemy, jak często to
 narzędzie zawodzi. Zielony wynik niewiarygodnego narzędzia nie staje się dowodem przez to, że
 wiarygodne narzędzie obok pokazuje to samo.
+
+Te dwa testy zostały następnie **usunięte, a nie pominięte**, bo pominięty test udaje, że coś
+sprawdza. Ich dawne pokrycie (moduł natywny z `app.asar.unpacked`, brak dostępu renderera do Node,
+odpowiedzi IPC bez ścieżek absolutnych) jest w trzech innych plikach E2E, a warunek ich powrotu
+jest zapisany w `README`: wracają, jeśli przyłączanie Playwrighta do zapakowanego Electrona stanie
+się wiarygodne, bo problemem była niezawodność narzędzia, nie sens tych asercji. **Nie powołujemy
+się na nie jako na dowód w żadnym miejscu tej roadmapy.**
+
+#### Potwierdzenie na implementacji ADR 0029
+
+Przebieg `39527689189` na commicie `f6f93a5` jest zielony w całości: cztery cele macierzy plus
+lint i skan sekretów, 14 testów E2E na Windowsie w 8,3 sekundy. Triaż awarii indeksu, kwarantanna
+i kolejność startu z ADR 0029 są w kodzie i nie naruszyły dowodu na moduł natywny.
 
 #### Jedyny element otwarty: bezpośredni dowód FTS5 w paczce
 

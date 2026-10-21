@@ -90,6 +90,30 @@ Odbudowa też jest widoczna: użytkownik dostaje informację, że indeks był us
 odbudowany, ile elementów wczytano i czego nie dało się odzyskać (wpisy logu operacji). Nie jest
 to ani błąd, ani cichy sukces. To stan, który ma swój widok, zgodnie z 13.1.
 
+> **Punkt 3 jest wykonany do połowy i nie wolno go czytać jako domkniętego.** Ścieżka danych
+> istnieje: okno powstaje przed otwarciem indeksu, a stan otwarcia (odbudowa z nazwą pliku
+> w kwarantannie albo odmowa z przyczyną) jest dostępny rendererowi przez `diagnostics:report`.
+> Widoku, który to pokazuje, nie ma, bo renderer w Etapie 1 jest pustą powłoką i taka była
+> decyzja. Luka jest w tym ADR, nie w implementacji: wymóg widoku trafił do etapu, który widoków
+> nie buduje. Domknięcie jest kryterium akceptacji Etapu 2 (ROADMAP), razem z trzema stanami
+> do pokazania i z zastrzeżeniem o `restoredItems: 0`.
+
+### 4. Warunek wykonalności: każda przyczyna z triażu musi być osiągalna
+
+Reguła, nie szczegół implementacji: **nic na ścieżce do okna nie może padać wcześniej niż
+rozpoznanie przyczyny, która ma zostać pokazana.** Gałąź tabeli decyzyjnej, do której nie da się
+dojść, nie jest decyzją, tylko tekstem.
+
+Przypadek, który to wymusił: `better-sqlite3` był importowany statycznie na górze modułu, więc
+przy niedziałającym module natywnym proces wywalał się, zanim cokolwiek zdążyło pokazać okno.
+Wiersz "moduł natywny się nie ładuje, odmowa z widocznym komunikatem" był przez to **nieosiągalny**,
+a cały triaż przewracał się w najgorszym możliwym momencie, czyli dokładnie wtedy, gdy miał
+zadziałać. Naprawione wczytywaniem leniwym.
+
+Praktyczna konsekwencja: każdy wiersz triażu ma test dowodzący, że da się do niego dojść. Test
+osiągalności jest tu ważniejszy od testu zachowania, bo zachowanie nieosiągalnej gałęzi jest
+nieistotne.
+
 ## Konsekwencje
 
 Bootstrap procesu głównego zmienia kolejność: okno, potem indeks. To dotyczy kodu z Etapu 1
@@ -99,9 +123,11 @@ i jest zmianą w jego strukturze startu, nie dopiskiem.
 z przyszłości i od braku dostępu. Wersja schematu w rejestrze migracji wystarcza do rozpoznania
 trzeciego przypadku: numer wyższy od znanego aplikacji oznacza indeks z przyszłości.
 
-Odbudowa indeksu staje się funkcją produktu, nie tylko ścieżką awaryjną. Jest też dostępna
+Odbudowa indeksu staje się funkcją produktu, nie tylko ścieżką awaryjną. Ma też być dostępna
 ręcznie z Diagnostics, bo skoro istnieje i jest przetestowana, ukrywanie jej przed użytkownikiem,
-który podejrzewa rozjechany indeks, nie ma uzasadnienia.
+który podejrzewa rozjechany indeks, nie ma uzasadnienia. To zdanie było obietnicą bez drogi:
+ręczne uruchomienie wymaga kanału IPC, a lista kanałów jest zamknięta. Kanał, jego kontrakt
+i uzasadnienie bezpieczeństwa są w ADR 0030, wejście w Etapie 2.
 
 Kryterium akceptacji Etapu 2 rozszerza się z "usunięcie pliku i restart odtwarza indeks" na cztery
 przyczyny i dwie reakcje, w tym asercję negatywną: indeks ze schematem z przyszłości **nie jest**
