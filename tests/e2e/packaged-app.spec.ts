@@ -8,7 +8,6 @@ interface Report {
     status: string;
     sqliteVersion?: string;
     fts5Available?: boolean;
-    writeReadRoundTrip?: boolean;
     reason?: string;
   };
   runtime: { packaged: boolean; platform: string; arch: string };
@@ -60,7 +59,6 @@ test.describe('zapakowana aplikacja', () => {
       expect(report.database.reason).toBeUndefined();
       expect(report.database.status).toBe('ok');
       expect(report.database.sqliteVersion).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(report.database.writeReadRoundTrip).toBe(true);
       expect(report.database.fts5Available).toBe(true);
     } finally {
       await app.close();

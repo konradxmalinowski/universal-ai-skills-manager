@@ -140,12 +140,51 @@ zeby lint padl - plus probe kontrolna, zeby nie zaliczal sie przez to, ze lint
 pada zawsze. Test na wartownik `isAbsolute` zostal w ten sam sposob sprawdzony:
 po cofnieciu poprawki pada, po przywroceniu przechodzi.
 
+**Zielony wynik z narzedzia o nieznanej niezawodnosci nie jest dowodem,
+dopoki nie wiemy, jak czesto to narzedzie zawodzi.** Testy przeciw zapakowanej
+aplikacji przechodzily przez `electron.launch` Playwrighta, czyli przylaczenie
+przez protokol debugowania. Ten mechanizm zawiesza sie losowo: lokalnie na
+macOS pada drugi start tej samej paczki co drugi albo co trzeci przebieg, na
+runnerze Windows pada kazdy. Przez kilka przebiegow czytalismy jego zielone
+wyniki jako potwierdzenie, ze modul natywny dziala w paczce - a byly to
+trafienia. Zmienilo to nie poziom ryzyka, ale **podstawe dowodowa**, na ktorej
+je oceniamy, i dlatego dowod na ten punkt nie przechodzi juz przez to
+narzedzie (patrz nizej).
+
 **Dowod rozlozony na dwa przebiegi CI nie jest dowodem.** Nie wyklucza, ze
 poprawka jednego celu zepsula drugi, a dokladnie to sie tu stalo: Windows byl
 zielony w jednym przebiegu, Linux w nastepnym, i w tym nastepnym Windows zrobil
 regresje. Wymagamy jednego przebiegu, w ktorym wszystkie cztery cele sa zielone
 naraz. "Trzy z czterech, kazdy kiedy indziej" to stan nieznany, nie stan
 potwierdzony.
+
+### Jak dowodzimy, ze baza dziala w zapakowanej aplikacji
+
+Teza do udowodnienia brzmi: `better-sqlite3` laduje sie z `app.asar.unpacked`
+w zapakowanej aplikacji i wykonuje zapytania (ADR 0007, ryzyko R2 z roadmapy).
+Teza nie brzmi: Playwright potrafi przylaczyc sie do zapakowanego Electrona.
+Do pewnego momentu pierwsze zalezalo od drugiego, a drugie zawodzi losowo.
+
+Dowod jest teraz niezalezny od tego narzedzia i siedzi
+w `tests/e2e/packaged-db.spec.ts`. Zapakowana binarka jest uruchamiana tak, jak
+uruchomilby ja uzytkownik, bez protokolu debugowania i bez zagladania jej do
+srodka, a dowodem jest to, co zostawila na dysku: baza z rejestrem migracji.
+Zeby ten rejestr powstal, w zapakowanej aplikacji musi sie zaladowac modul
+natywny i wykonac `CREATE TABLE` oraz `INSERT`. Odczyt robi test wlasnym
+`better-sqlite3`, z zewnatrz. To obserwacja czarnoskrzynkowa i jest mocniejsza
+niz pytanie aplikacji przez IPC, bo patrzy na skutek, a nie na odpowiedz.
+
+Schemat w wersji 1 to **sam rejestr migracji**. Nie ma w nim tabeli dodanej po
+to, zeby test mial co sprawdzic - to ten sam wzorzec co furtka istniejaca
+tylko dla testu, tylko schowany w schemacie bazy. FTS5, na ktorym opiera sie
+ADR 0007, jest na razie dowodzony dwuczesciowo: binding dostarczony w paczce
+jest bajt w bajt tym samym plikiem, ktory laduje proces testu, a w tym procesie
+FTS5 dziala. Bezposredni dowod domknie sie w Etapie 2 razem z pierwsza
+prawdziwa tabela pelnotekstowa.
+
+Dwa testy w `tests/e2e/packaged-app.spec.ts` zostaja jako to, czym sa: testy
+przylaczania Playwrighta do zapakowanej aplikacji. Ich wynik nie jest dowodem
+na dzialanie modulu natywnego i nie powinien byc tak czytany.
 
 ## Zaleznosci i powody
 

@@ -43,7 +43,19 @@ function start(): void {
     blockOutboundNetwork();
     denyAllPermissions();
 
-    indexStore = SqliteIndexStore.open(databaseFile(app.getPath('userData')));
+    try {
+      indexStore = SqliteIndexStore.open(databaseFile(app.getPath('userData')));
+    } catch (error: unknown) {
+      // Indeks jest w sciezce krytycznej produktu, wiec aplikacja nie startuje
+      // z baza w nieznanym stanie schematu. Cicha kontynuacja oznaczalaby
+      // dzialanie na uszkodzonym indeksie, czyli gorszy wariant niz brak startu.
+      console.error(
+        '[uasm] nie udalo sie przygotowac indeksu, aplikacja nie wystartuje:',
+        error instanceof Error ? error.message : String(error),
+      );
+      app.exit(1);
+      return;
+    }
 
     const registry = new IpcRegistry(ipcMain);
     registerDiagnosticsHandler(registry, indexStore);

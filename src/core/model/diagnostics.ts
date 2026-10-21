@@ -4,7 +4,6 @@ export interface DatabaseProbeOk {
   readonly engineVersion: string;
   readonly sqliteVersion: string;
   readonly fts5Available: boolean;
-  readonly writeReadRoundTrip: boolean;
   readonly journalMode: string;
   readonly schemaVersion: number;
   readonly locationLabel: string;

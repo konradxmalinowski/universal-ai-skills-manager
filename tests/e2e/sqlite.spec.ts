@@ -9,7 +9,6 @@ interface DatabaseReport {
   engineVersion?: string;
   sqliteVersion?: string;
   fts5Available?: boolean;
-  writeReadRoundTrip?: boolean;
   journalMode?: string;
   schemaVersion?: number;
   locationLabel?: string;
@@ -41,10 +40,9 @@ test('better-sqlite3 laduje sie w zbudowanej aplikacji i wykonuje zapytanie', as
     expect(report.database.status).toBe('ok');
     expect(report.database.engine).toBe('better-sqlite3');
     expect(report.database.sqliteVersion).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(report.database.writeReadRoundTrip).toBe(true);
+    expect(report.database.schemaVersion).toBe(1);
     expect(report.database.fts5Available).toBe(true);
     expect(report.database.journalMode).toBe('wal');
-    expect(report.database.schemaVersion).toBe(1);
   } finally {
     await app.close();
   }

@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -9,7 +8,7 @@ import type { DatabaseProbe } from '../../core/model/diagnostics';
 import type { IndexStore } from '../../core/ports/index-store';
 import { redactHomePath } from '../logging/redact';
 
-const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 1;
 
 /**
  * Sciezka migracji jest wyliczana w funkcji, nie w stalej modulu, zeby modul
@@ -25,8 +24,22 @@ export interface IndexStoreOptions {
   readonly schemaFile?: string;
 }
 
+export class IndexStoreMigrationError extends Error {
+  constructor(
+    message: string,
+    override readonly cause: unknown,
+  ) {
+    super(message);
+    this.name = 'IndexStoreMigrationError';
+  }
+}
+
 interface VersionRow {
-  readonly version: string;
+  readonly version: number | null;
+}
+
+interface TextRow {
+  readonly value: string;
 }
 
 interface CountRow {
@@ -51,69 +64,103 @@ function readPackagedVersion(): string {
 }
 
 /**
- * Indeks metadanych na `better-sqlite3` (ADR 0007). W Etapie 1 ta klasa robi
- * dokladnie jedna rzecz: dowodzi, ze modul natywny laduje sie w zbudowanej
- * aplikacji, ze SQLite odpowiada i ze FTS5 jest skompilowane w dostarczonym
- * binarium. To jest ryzyko R2 i rozstrzyga sie teraz, nie przed wydaniem.
+ * Indeks metadanych na `better-sqlite3` (ADR 0007).
+ *
+ * Schemat jest zakladany przy otwarciu, nie przy pierwszym zapytaniu. Dwa
+ * powody. Pierwszy: naturalna kolejnosc dla indeksu to otworz, zmigruj,
+ * obsluguj - aplikacja nie ma dzialac z baza w nieznanym stanie schematu.
+ * Drugi: metoda nazwana `probe` nie ma prawa mutowac schematu, a wczesniej to
+ * robila.
+ *
+ * Skutek uboczny, swiadomy i uzyteczny: po zwyklym starcie aplikacji stan
+ * schematu jest widoczny na dysku, wiec da sie go sprawdzic z zewnatrz, bez
+ * zagladania aplikacji do srodka.
  */
 export class SqliteIndexStore implements IndexStore {
-  private readonly db: Database.Database;
-
   private constructor(
-    db: Database.Database,
+    private readonly db: Database.Database,
     private readonly locationLabel: string,
-    private readonly schemaFile: string,
-  ) {
-    this.db = db;
-  }
+  ) {}
 
+  /**
+   * Otwiera baze i doprowadza schemat do biezacej wersji.
+   *
+   * Rzuca `IndexStoreMigrationError`, jesli migracja nie przejdzie. Cicha
+   * porazka na tej sciezce oznaczalaby aplikacje dzialajaca z uszkodzonym
+   * indeksem, a indeks jest w sciezce krytycznej produktu.
+   */
   static open(dbPath: string, options: IndexStoreOptions = {}): SqliteIndexStore {
-    mkdirSync(dirname(dbPath), { recursive: true });
-    const db = new Database(dbPath);
-    return new SqliteIndexStore(
-      db,
-      redactHomePath(dbPath, options.home ?? homedir()),
-      options.schemaFile ?? defaultSchemaFile(),
-    );
+    const label = redactHomePath(dbPath, options.home ?? homedir());
+    let db: Database.Database;
+
+    try {
+      mkdirSync(dirname(dbPath), { recursive: true });
+      db = new Database(dbPath);
+    } catch (error: unknown) {
+      throw new IndexStoreMigrationError(`nie udalo sie otworzyc indeksu ${label}`, error);
+    }
+
+    try {
+      db.pragma('journal_mode = WAL');
+      SqliteIndexStore.migrate(db, options.schemaFile ?? defaultSchemaFile());
+    } catch (error: unknown) {
+      db.close();
+      throw new IndexStoreMigrationError(`migracja indeksu ${label} nie przeszla`, error);
+    }
+
+    return new SqliteIndexStore(db, label);
   }
 
+  /**
+   * Migracja jest idempotentna z konstrukcji: wersja wchodzi do rejestru tylko
+   * wtedy, gdy jej tam nie ma, a cala operacja idzie w jednej transakcji.
+   * Powtorne otwarcie tej samej bazy nie zmienia ani schematu, ani rejestru.
+   */
+  private static migrate(db: Database.Database, schemaFile: string): void {
+    const sql = readFileSync(schemaFile, 'utf8');
+
+    db.transaction(() => {
+      db.exec(sql);
+      const applied = db.prepare('SELECT max(version) AS version FROM schema_migrations').get() as
+        VersionRow | undefined;
+
+      if ((applied?.version ?? 0) < SCHEMA_VERSION) {
+        db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
+          SCHEMA_VERSION,
+          new Date().toISOString(),
+        );
+      }
+    })();
+  }
+
+  /**
+   * Odczyt stanu, bez zapisu. Wszystko, co tu jest, da sie policzyc
+   * zapytaniem czytajacym - dlatego raport diagnostyczny nie zmienia niczego
+   * w bazie, nawet gdy ktos wywola go dwadziescia razy.
+   */
   probe(): DatabaseProbe {
     try {
-      const journalMode = this.db.pragma('journal_mode = WAL', { simple: true });
-      this.db.exec(readFileSync(this.schemaFile, 'utf8'));
-      this.db
-        .prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)')
-        .run(SCHEMA_VERSION, new Date().toISOString());
-
-      const checkedAt = new Date().toISOString();
-      this.db
-        .prepare('INSERT OR REPLACE INTO startup_probe (id, checked_at) VALUES (1, ?)')
-        .run(checkedAt);
-      const readBack = this.db
-        .prepare('SELECT checked_at AS version FROM startup_probe WHERE id = 1')
+      const sqliteVersion = this.db.prepare('SELECT sqlite_version() AS value').get() as
+        TextRow | undefined;
+      const journalMode = this.db.prepare('PRAGMA journal_mode').get() as
+        { readonly journal_mode?: string } | undefined;
+      const schemaVersion = this.db
+        .prepare('SELECT max(version) AS version FROM schema_migrations')
         .get() as VersionRow | undefined;
-
-      this.db.exec(
-        "DELETE FROM startup_probe_fts; INSERT INTO startup_probe_fts (body) VALUES ('acme probe row');",
-      );
-      const matched = this.db
+      const fts5 = this.db
         .prepare(
-          "SELECT count(*) AS total FROM startup_probe_fts WHERE startup_probe_fts MATCH 'acme'",
+          "SELECT count(*) AS total FROM pragma_compile_options WHERE compile_options = 'ENABLE_FTS5'",
         )
         .get() as CountRow | undefined;
-
-      const sqliteVersion = this.db.prepare('SELECT sqlite_version() AS version').get() as
-        VersionRow | undefined;
 
       return {
         status: 'ok',
         engine: 'better-sqlite3',
         engineVersion: readPackagedVersion(),
-        sqliteVersion: sqliteVersion?.version ?? 'unknown',
-        fts5Available: (matched?.total ?? 0) === 1,
-        writeReadRoundTrip: readBack?.version === checkedAt,
-        journalMode: typeof journalMode === 'string' ? journalMode : 'unknown',
-        schemaVersion: SCHEMA_VERSION,
+        sqliteVersion: sqliteVersion?.value ?? 'unknown',
+        fts5Available: (fts5?.total ?? 0) > 0,
+        journalMode: journalMode?.journal_mode ?? 'unknown',
+        schemaVersion: schemaVersion?.version ?? 0,
         locationLabel: this.locationLabel,
       };
     } catch (error: unknown) {
