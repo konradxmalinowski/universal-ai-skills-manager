@@ -16,3 +16,8 @@ export function preloadScript(): string {
 export function databaseFile(userDataDir: string): string {
   return join(userDataDir, 'index.db');
 }
+
+/** Katalog, do ktorego trafia stary indeks przed odbudowa (ADR 0029). */
+export function quarantineRoot(userDataDir: string): string {
+  return join(userDataDir, 'quarantine');
+}

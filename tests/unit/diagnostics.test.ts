@@ -27,6 +27,7 @@ describe('raport diagnostyczny', () => {
     const report = buildDiagnosticsReport({
       runtime,
       indexStore: storeReturning({ status: 'failed', reason: 'brak', locationLabel: '~/x' }),
+      index: { outcome: 'ready' },
       clock: { now: () => new Date('2026-01-02T03:04:05.000Z') },
       appIcon: 'placeholder',
       stage: 'etap-1-szkielet',
@@ -38,6 +39,7 @@ describe('raport diagnostyczny', () => {
     const report = buildDiagnosticsReport({
       runtime,
       indexStore: storeReturning({ status: 'failed', reason: 'brak', locationLabel: '~/x' }),
+      index: { outcome: 'ready' },
       clock: { now: () => new Date(0) },
       appIcon: 'placeholder',
       stage: 'etap-1-szkielet',
@@ -53,6 +55,7 @@ describe('raport diagnostyczny', () => {
         reason: 'NODE_MODULE_VERSION mismatch',
         locationLabel: '~/Library/x/index.db',
       }),
+      index: { outcome: 'ready' },
       clock: { now: () => new Date(0) },
       appIcon: 'placeholder',
       stage: 'etap-1-szkielet',

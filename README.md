@@ -158,6 +158,15 @@ regresje. Wymagamy jednego przebiegu, w ktorym wszystkie cztery cele sa zielone
 naraz. "Trzy z czterech, kazdy kiedy indziej" to stan nieznany, nie stan
 potwierdzony.
 
+**Commitujemy przez `git commit --only <sciezki>`, nie przez `git add` plus
+`git commit`.** W tym repozytorium pracuje rownolegle kilka osob i narzedzi,
+wiec w indeksie moga lezec cudze, zaindeksowane i jeszcze niezacommitowane
+pliki. `git add <moje pliki>` niczego nie ogranicza - `git commit` bierze
+**caly** indeks. Zdarzylo sie to dwa razy: raz przez `git add -A`, raz przez
+commit po `git add` jednego pliku, gdy w indeksie czekala praca kogos innego.
+Oba razy nic nie zginelo, ale historia zaczela klamac o tym, co sie stalo.
+`--only` commituje wylacznie wskazane sciezki, niezaleznie od stanu indeksu.
+
 ### Jak dowodzimy, ze baza dziala w zapakowanej aplikacji
 
 Teza do udowodnienia brzmi: `better-sqlite3` laduje sie z `app.asar.unpacked`
@@ -182,9 +191,29 @@ jest bajt w bajt tym samym plikiem, ktory laduje proces testu, a w tym procesie
 FTS5 dziala. Bezposredni dowod domknie sie w Etapie 2 razem z pierwsza
 prawdziwa tabela pelnotekstowa.
 
-Dwa testy w `tests/e2e/packaged-app.spec.ts` zostaja jako to, czym sa: testy
-przylaczania Playwrighta do zapakowanej aplikacji. Ich wynik nie jest dowodem
-na dzialanie modulu natywnego i nie powinien byc tak czytany.
+Dwa testy, ktore wczesniej szly ta droga (`tests/e2e/packaged-app.spec.ts`),
+**zostaly usuniete**. Nie oznaczone jako pomijane, bo pomijany test udaje, ze
+cos sprawdza.
+
+Powod: zawieszaly sie losowo, mniej wiecej co czwarty przebieg, a ich czerwien
+nie mowila nic o aplikacji (szczegoly nizej). Test, ktory czerwieni macierz co
+czwarty raz bez powodu, uczy ignorowac czerwony wynik - czyli robi dokladnie
+to, przed czym broni sie ten rozdzial. Dopoki byly jedynym dowodem na modul
+natywny w paczce, trzymalismy je mimo tego kosztu; od momentu, gdy dowod
+przeszedl do `packaged-db.spec.ts`, przestaly byc tego warte.
+
+Ich dawna wartosc jest pokryta, wiec nie ma tu luki:
+
+| Co sprawdzaly                                           | Gdzie to jest teraz                    |
+| ------------------------------------------------------- | -------------------------------------- |
+| Modul natywny laduje sie z `app.asar.unpacked` w paczce | `tests/e2e/packaged-db.spec.ts`        |
+| Renderer nie ma dostepu do Node                         | `tests/e2e/renderer-hardening.spec.ts` |
+| IPC odpowiada i nie oddaje sciezek absolutnych          | `tests/e2e/sqlite.spec.ts`             |
+
+**Warunek powrotu:** jesli przylaczanie Playwrighta do zapakowanego Electrona
+stanie sie wiarygodne, te testy moga wrocic. Pokrycie czarnoskrzynkowe calej
+paczki, razem z rendererem i IPC, ma wartosc samo w sobie - problemem byla
+niezawodnosc narzedzia, nie sens tych asercji.
 
 ### Znane ograniczenie: przylaczanie Playwrighta do zapakowanej aplikacji
 
@@ -210,9 +239,8 @@ bezblednie. Przyczyna jest wiec w sekwencji przylaczania Playwrighta, nie
 w aplikacji i nie w opcjach, ktore mu podajemy.
 
 Dlatego dowod na ryzyko R2 nie przechodzi przez to narzedzie, a przez odczyt
-stanu bazy z dysku (sekcja wyzej). Dwa testy w `packaged-app.spec.ts`, ktore
-nadal przez nie przechodza, trzeba czytac z ta wiedza: ich czerwien nie mowi
-nic o module natywnym, a ich zielen nie jest potwierdzeniem.
+stanu bazy z dysku (sekcja wyzej), a dwa testy, ktore przez nie szly, zostaly
+usuniete razem z uzasadnieniem i warunkiem powrotu.
 
 ## Zaleznosci i powody
 

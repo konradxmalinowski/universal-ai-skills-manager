@@ -58,8 +58,12 @@ function launchEnv(): Record<string, string> {
   return env;
 }
 
-async function launch(args: string[], executablePath?: string): Promise<LaunchedApp> {
-  const userDataDir = createTempTree('acme-userdata-');
+async function launch(
+  args: string[],
+  executablePath?: string,
+  presetUserDataDir?: string,
+): Promise<LaunchedApp> {
+  const userDataDir = presetUserDataDir ?? createTempTree('acme-userdata-');
   const startedAt = Date.now();
 
   if (executablePath !== undefined) {
@@ -102,6 +106,14 @@ async function launch(args: string[], executablePath?: string): Promise<Launched
 /** Uruchamia zbudowana aplikacje z `dist/` (pole `main` w package.json). */
 export function launchApp(): Promise<LaunchedApp> {
   return launch(['.']);
+}
+
+/**
+ * To samo, ale z katalogiem danych przygotowanym przez test - potrzebne tam,
+ * gdzie trzeba podstawic zepsuty indeks jeszcze przed startem aplikacji.
+ */
+export function launchAppWithUserData(userDataDir: string): Promise<LaunchedApp> {
+  return launch(['.'], undefined, userDataDir);
 }
 
 const RELEASE_DIR = 'release';

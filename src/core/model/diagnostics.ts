@@ -1,3 +1,5 @@
+import type { IndexStartupInfo } from './index-health';
+
 export interface DatabaseProbeOk {
   readonly status: 'ok';
   readonly engine: string;
@@ -15,7 +17,12 @@ export interface DatabaseProbeFailed {
   readonly locationLabel: string;
 }
 
-export type DatabaseProbe = DatabaseProbeOk | DatabaseProbeFailed;
+export interface DatabaseProbeUnavailable {
+  readonly status: 'unavailable';
+  readonly reason: string;
+}
+
+export type DatabaseProbe = DatabaseProbeOk | DatabaseProbeFailed | DatabaseProbeUnavailable;
 
 export interface RuntimeInfo {
   readonly platform: string;
@@ -31,6 +38,8 @@ export interface DiagnosticsReport {
   readonly generatedAt: string;
   readonly runtime: RuntimeInfo;
   readonly database: DatabaseProbe;
+  /** Jak zakonczylo sie otwarcie indeksu przy starcie (ADR 0029). */
+  readonly index: IndexStartupInfo;
   /**
    * Ikona aplikacji jest nierozstrzygnieta (ARCHITECTURE 13.3). Raport mowi
    * o tym wprost, zamiast przemilczec placeholder.

@@ -1,6 +1,7 @@
 import { app } from 'electron';
 
 import type { DiagnosticsReport, RuntimeInfo } from '../../../core/model/diagnostics';
+import type { IndexStartupInfo } from '../../../core/model/index-health';
 import { systemClock } from '../../../core/ports/clock';
 import type { IndexStore } from '../../../core/ports/index-store';
 import { buildDiagnosticsReport } from '../../services/diagnostics';
@@ -20,11 +21,21 @@ function runtimeInfo(): RuntimeInfo {
   };
 }
 
-export function registerDiagnosticsHandler(registry: IpcRegistry, indexStore: IndexStore): void {
+export interface IndexState {
+  readonly store: IndexStore | null;
+  readonly info: IndexStartupInfo;
+}
+
+export function registerDiagnosticsHandler(
+  registry: IpcRegistry,
+  indexState: () => IndexState,
+): void {
   registry.register('diagnostics:report', (): DiagnosticsReport => {
+    const state = indexState();
     return buildDiagnosticsReport({
       runtime: runtimeInfo(),
-      indexStore,
+      indexStore: state.store,
+      index: state.info,
       clock: systemClock,
       appIcon: 'placeholder',
       stage: STAGE,

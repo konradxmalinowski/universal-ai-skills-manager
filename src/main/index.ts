@@ -1,17 +1,51 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 
-import { SqliteIndexStore } from '../infra/db/index-store';
-import { databaseFile, rendererRoot } from './bootstrap/paths';
+import type { IndexStartupInfo } from '../core/model/index-health';
+import { IndexStoreOpenError, SqliteIndexStore } from '../infra/db/index-store';
+import { quarantineIndex } from '../infra/db/quarantine';
+import { redactHomePath } from '../infra/logging/redact';
+import { databaseFile, quarantineRoot, rendererRoot } from './bootstrap/paths';
+import { startIndex, type IndexOpenFailure } from './bootstrap/index-startup';
 import { handleAppScheme, registerAppScheme } from './bootstrap/protocol';
 import { blockOutboundNetwork, denyAllPermissions, hardenWebContents } from './bootstrap/security';
 import { createMainWindow } from './bootstrap/window';
-import { registerDiagnosticsHandler } from './ipc/handlers/diagnostics';
+import { registerDiagnosticsHandler, type IndexState } from './ipc/handlers/diagnostics';
 import { IpcRegistry } from './ipc/registry';
+import { homedir } from 'node:os';
 
 registerAppScheme();
 app.enableSandbox();
 
-let indexStore: SqliteIndexStore | null = null;
+let indexState: IndexState = { store: null, info: { outcome: 'refused' } };
+
+function describeFailure(error: unknown): IndexOpenFailure | null {
+  return error instanceof IndexStoreOpenError
+    ? { reason: error.reason, message: error.message }
+    : null;
+}
+
+function reportIndexStartup(info: IndexStartupInfo): void {
+  if (info.outcome === 'ready') return;
+
+  // Okno jest kanalem podstawowym (ADR 0029 punkt 3), ale stderr i kod wyjscia
+  // zostaja dla CI, testow i uruchomienia z terminala. Kodu ustawiamy bez
+  // konczenia procesu - inaczej okno, ktore ma pokazac powod, zniknelo by
+  // razem z aplikacja.
+  if (info.outcome === 'refused') {
+    console.error(
+      '[uasm] indeks nie zostal otwarty:',
+      info.reason ?? 'nieznana przyczyna',
+      info.message ?? '',
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  console.warn(
+    '[uasm] indeks byl uszkodzony i zostal odbudowany; stary plik:',
+    info.quarantinedAs ?? '(brak)',
+  );
+}
 
 function start(): void {
   if (!app.requestSingleInstanceLock()) {
@@ -34,8 +68,8 @@ function start(): void {
   });
 
   app.on('before-quit', () => {
-    indexStore?.close();
-    indexStore = null;
+    indexState.store?.close();
+    indexState = { store: null, info: indexState.info };
   });
 
   void app.whenReady().then(() => {
@@ -43,25 +77,35 @@ function start(): void {
     blockOutboundNetwork();
     denyAllPermissions();
 
-    try {
-      indexStore = SqliteIndexStore.open(databaseFile(app.getPath('userData')));
-    } catch (error: unknown) {
-      // Indeks jest w sciezce krytycznej produktu, wiec aplikacja nie startuje
-      // z baza w nieznanym stanie schematu. Cicha kontynuacja oznaczalaby
-      // dzialanie na uszkodzonym indeksie, czyli gorszy wariant niz brak startu.
-      console.error(
-        '[uasm] nie udalo sie przygotowac indeksu, aplikacja nie wystartuje:',
-        error instanceof Error ? error.message : String(error),
-      );
-      app.exit(1);
-      return;
-    }
-
     const registry = new IpcRegistry(ipcMain);
-    registerDiagnosticsHandler(registry, indexStore);
+    registerDiagnosticsHandler(registry, () => indexState);
     registry.assertImplementedRegistered();
 
+    // Okno powstaje PRZED otwarciem indeksu (ADR 0029 punkt 3). Odmowa startu
+    // to nie brak okna, tylko okno pokazujace powod - a to wymaga, zeby okno
+    // istnialo niezaleznie od tego, czy indeks da sie otworzyc.
     createMainWindow();
+
+    const userData = app.getPath('userData');
+    const dbPath = databaseFile(userData);
+    const home = homedir();
+
+    const result = startIndex({
+      openStore: () => SqliteIndexStore.open(dbPath, { home }),
+      quarantine: () =>
+        redactHomePath(
+          quarantineIndex(
+            dbPath,
+            quarantineRoot(userData),
+            new Date().toISOString().replace(/[:.]/g, '-'),
+          ).directory,
+          home,
+        ),
+      describeFailure,
+    });
+
+    indexState = { store: result.store, info: result.info };
+    reportIndexStartup(result.info);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

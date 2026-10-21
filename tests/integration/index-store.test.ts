@@ -1,11 +1,11 @@
-import { writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import Database from 'better-sqlite3';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
-  IndexStoreMigrationError,
+  IndexStoreOpenError,
   SCHEMA_VERSION,
   SqliteIndexStore,
 } from '../../src/infra/db/index-store';
@@ -138,7 +138,10 @@ describe('indeks SQLite', () => {
     });
 
     try {
-      expect(store.probe().locationLabel).toBe(`~${join('/', 'nested', 'index.db')}`);
+      const probe = store.probe();
+      expect(probe.status).toBe('ok');
+      if (probe.status === 'unavailable') return;
+      expect(probe.locationLabel).toBe(`~${join('/', 'nested', 'index.db')}`);
     } finally {
       store.close();
     }
@@ -152,7 +155,7 @@ describe('indeks SQLite', () => {
         home: tree,
         schemaFile: join(tree, 'nie-ma-takiego-pliku.sql'),
       }),
-    ).toThrow(IndexStoreMigrationError);
+    ).toThrow(IndexStoreOpenError);
   });
 
   it('uszkodzony plik bazy nie przechodzi przez otwarcie', () => {
@@ -161,7 +164,85 @@ describe('indeks SQLite', () => {
     writeFileSync(dbPath, 'to nie jest baza sqlite', 'utf8');
 
     expect(() => SqliteIndexStore.open(dbPath, { home: tree, schemaFile: SCHEMA_FILE })).toThrow(
-      IndexStoreMigrationError,
+      IndexStoreOpenError,
     );
+  });
+});
+
+/**
+ * Rozpoznanie przyczyny jest warunkiem triazu z ADR 0029: dwie z tych
+ * przyczyn prowadza do odbudowy, trzy do odmowy. Pomylka w klasyfikacji
+ * oznaczalaby albo odmowe tam, gdzie wystarczyla odbudowa, albo odbudowe
+ * tam, gdzie wyrzucilaby dane.
+ */
+describe('rozpoznanie przyczyny awarii indeksu', () => {
+  function reasonOf(call: () => unknown): string {
+    try {
+      call();
+    } catch (error: unknown) {
+      if (error instanceof IndexStoreOpenError) return error.reason;
+      return `inny blad: ${String(error)}`;
+    }
+    return 'brak bledu';
+  }
+
+  it('uszkodzony plik to corrupted', () => {
+    const tree = createTempTree('acme-db-');
+    const dbPath = join(tree, 'broken.db');
+    writeFileSync(dbPath, 'to nie jest baza sqlite', 'utf8');
+
+    expect(
+      reasonOf(() => SqliteIndexStore.open(dbPath, { home: tree, schemaFile: SCHEMA_FILE })),
+    ).toBe('corrupted');
+  });
+
+  it('baza z tabelami, ale bez rejestru migracji, to unknown-schema', () => {
+    const tree = createTempTree('acme-db-');
+    const dbPath = join(tree, 'index.db');
+    const db = new Database(dbPath);
+    db.exec('CREATE TABLE acme_obce (id INTEGER PRIMARY KEY)');
+    db.close();
+
+    expect(
+      reasonOf(() => SqliteIndexStore.open(dbPath, { home: tree, schemaFile: SCHEMA_FILE })),
+    ).toBe('unknown-schema');
+  });
+
+  it('wersja schematu wyzsza od znanej to schema-from-future', () => {
+    const tree = createTempTree('acme-db-');
+    const dbPath = join(tree, 'index.db');
+
+    const store = SqliteIndexStore.open(dbPath, { home: tree, schemaFile: SCHEMA_FILE });
+    store.close();
+
+    const db = new Database(dbPath);
+    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
+      SCHEMA_VERSION + 7,
+      new Date().toISOString(),
+    );
+    db.close();
+
+    expect(
+      reasonOf(() => SqliteIndexStore.open(dbPath, { home: tree, schemaFile: SCHEMA_FILE })),
+    ).toBe('schema-from-future');
+  });
+
+  it('niezapisywalny katalog to not-writable', () => {
+    if (process.platform === 'win32') return;
+
+    const tree = createTempTree('acme-db-');
+    const locked = join(tree, 'bez-zapisu');
+    mkdirSync(locked, { recursive: true });
+    chmodSync(locked, 0o500);
+
+    try {
+      expect(
+        reasonOf(() =>
+          SqliteIndexStore.open(join(locked, 'index.db'), { home: tree, schemaFile: SCHEMA_FILE }),
+        ),
+      ).toBe('not-writable');
+    } finally {
+      chmodSync(locked, 0o700);
+    }
   });
 });
