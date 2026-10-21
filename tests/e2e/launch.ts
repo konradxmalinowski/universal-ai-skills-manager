@@ -18,24 +18,63 @@ export interface LaunchedApp {
  * nie dotyka profilu uzytkownika.
  */
 /**
- * Jawny limit na sam start zapakowanej binarki, osobny od limitu testu.
+ * Limit na sam start zapakowanej binarki, osobny od limitu testu.
  *
- * Pierwsze uruchomienie swiezo zbudowanego, niepodpisanego pliku jest
- * kosztowne: na Windowsie Defender skanuje go w locie, na macOS system
- * weryfikuje binarke bez podpisu (ADR 0003). Zmierzone lokalnie na macOS:
- * pierwszy start po spakowaniu potrafi zajac kilkadziesiat sekund, kolejne sa
- * natychmiastowe. Na runnerze Windows ten sam test raz przeszedl, raz
- * przekroczyl 180 s, czyli domyslny limit startu.
+ * Hipoteza o koszcie pierwszego uruchomienia niepodpisanego pliku zostala
+ * **obalona pomiarem**: 180 s i 300 s daly na runnerze Windows identyczny
+ * wynik, a linia z czasem startu nie pojawila sie w logu ani razu, czyli start
+ * nie konczyl sie ani szybko, ani wolno - nie konczyl sie wcale. Powtorka
+ * zadania na commicie, ktory byl zielony, padla tak samo, wiec nie ma tam
+ * regresji, jest niestabilnosc.
  *
- * Czas startu jest wypisywany, zeby kolejne przebiegi dawaly dane, a nie
- * domysly - jesli okaze sie, ze start trwa stale minuty, przyczyna jest inna
- * niz skanowanie i trzeba jej szukac dalej, a nie podnosic limit.
+ * Skoro wyzszy limit niczego nie kupuje, zostaje nizszy: czerwone zadanie ma
+ * kosztowac minuty, nie dziesiec.
  */
-const PACKAGED_LAUNCH_TIMEOUT_MS = 300_000;
+const PACKAGED_LAUNCH_TIMEOUT_MS = 120_000;
+
+/**
+ * Zmienne, ktore nie maja prawa wejsc do uruchamianej aplikacji.
+ *
+ * `NODE_OPTIONS` ustawia tryb deweloperski, zeby wstrzyknac obserwator plikow
+ * (scripts/dev-reload.cjs). Electron odrzuca je w zapakowanej aplikacji, ale
+ * test nie ma dziedziczyc po procesie rodzica czegokolwiek, co wplywa na
+ * uruchamiany proces - ma kontrolowac srodowisko, w ktore startuje.
+ * `ELECTRON_RUN_AS_NODE` zmienia Electrona w zwykly Node, czyli aplikacja
+ * nie wystartowalaby w ogole.
+ */
+const STRIPPED_ENV_KEYS = ['NODE_OPTIONS', 'ELECTRON_RUN_AS_NODE'] as const;
+
+function launchEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+    if ((STRIPPED_ENV_KEYS as readonly string[]).includes(key)) continue;
+    env[key] = value;
+  }
+  env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = '1';
+  // Bez tego zawis startu nie zostawia na stderr zadnego sladu, a cisza
+  // w logu byla najbardziej kosztowna cecha awarii na Windowsie.
+  env['ELECTRON_ENABLE_LOGGING'] = '1';
+  return env;
+}
 
 async function launch(args: string[], executablePath?: string): Promise<LaunchedApp> {
   const userDataDir = createTempTree('acme-userdata-');
   const startedAt = Date.now();
+
+  if (executablePath !== undefined) {
+    // Zrzut przed startem, zeby kolejna awaria dawala dane, a nie domysly.
+    // Jesli NODE_OPTIONS nie ma w srodowisku, to nie ona jest przyczyna
+    // i przestajemy o niej mowic.
+    const stripped = STRIPPED_ENV_KEYS.map(
+      (key) =>
+        `${key}=${process.env[key] === undefined ? 'brak' : JSON.stringify(process.env[key])}`,
+    ).join(' ');
+    process.stdout.write(
+      `[e2e] start paczki na ${process.platform}: ${executablePath}\n` +
+        `[e2e] srodowisko rodzica, zmienne usuwane przed startem: ${stripped}\n`,
+    );
+  }
 
   const app = await electron.launch({
     args: [...args, `--user-data-dir=${userDataDir}`],
@@ -47,14 +86,14 @@ async function launch(args: string[], executablePath?: string): Promise<Launched
     // z bitem setuid - jest na to krok w ci.yml.
     chromiumSandbox: true,
     ...(executablePath === undefined ? {} : { executablePath }),
-    env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: '1' },
+    env: launchEnv(),
   });
 
   const page = await app.firstWindow();
   await page.waitForSelector('[data-testid="app-shell"]');
 
   if (executablePath !== undefined) {
-    process.stdout.write(`[e2e] start zapakowanej aplikacji: ${Date.now() - startedAt} ms\n`);
+    process.stdout.write(`[e2e] paczka wystartowala po ${Date.now() - startedAt} ms\n`);
   }
 
   return { app, page, userDataDir };
